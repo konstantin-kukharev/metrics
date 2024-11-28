@@ -4,16 +4,16 @@ import (
 	"github.com/konstantin-kukharev/metrics/internal"
 )
 
-type service struct {
+type metric struct {
 	storage internal.Storage
 	metric  map[string]func(s internal.Storage, k, v string) error
 }
 
-func (s *service) Get(k string) ([]byte, bool) {
+func (s *metric) Get(k string) ([]byte, bool) {
 	return s.storage.Get(k)
 }
 
-func (s *service) Set(t, k string, v string) error {
+func (s *metric) Set(t, k string, v string) error {
 	if k == "" {
 		return internal.ErrWrongMetricName
 	}
@@ -25,8 +25,8 @@ func (s *service) Set(t, k string, v string) error {
 	return s.metric[t](s.storage, k, v)
 }
 
-func NewMetric(s internal.Storage, m ...internal.Metric) *service {
-	srv := &service{
+func NewMetric(s internal.Storage, m ...internal.Metric) *metric {
+	srv := &metric{
 		storage: s,
 		metric:  map[string]func(s internal.Storage, k string, v string) error{},
 	}
