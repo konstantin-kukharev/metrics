@@ -5,7 +5,9 @@ import (
 
 	"log"
 
+	"github.com/konstantin-kukharev/metrics/cmd/server/handler"
 	"github.com/konstantin-kukharev/metrics/cmd/server/metric"
+	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
 )
 
@@ -23,8 +25,8 @@ run
 func run() error {
 	store := storage.NewMemStorage()
 
-	serv := NewMetricService(store, metric.Gauge(), metric.Counter())
-	srv := NewServer(serv)
+	serv := service.NewMetric(store, metric.Gauge(), metric.Counter())
+	srv := handler.NewMetric(serv)
 
 	mux := http.NewServeMux()
 	LinkMetric := "/update/{type}/{name}/{val}"

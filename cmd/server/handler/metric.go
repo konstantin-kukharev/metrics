@@ -1,13 +1,13 @@
-package main
+package handler
 
 import (
 	"errors"
 	"net/http"
 
-	"github.com/konstantin-kukharev/metrics/cmd/server/internal"
+	"github.com/konstantin-kukharev/metrics/internal"
 )
 
-type server struct {
+type metric struct {
 	service internal.MetricService
 }
 
@@ -20,7 +20,7 @@ type server struct {
 // - При попытке передать запрос с некорректным типом метрики или значением возвращать http.StatusBadRequest
 //
 // - Редиректы не поддерживаются.
-func (s *server) MetricUpdate(w http.ResponseWriter, r *http.Request) {
+func (s *metric) MetricUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -52,7 +52,7 @@ func (s *server) MetricUpdate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func NewServer(srv internal.MetricService) *server {
-	serv := &server{service: srv}
+func NewMetric(srv internal.MetricService) *metric {
+	serv := &metric{service: srv}
 	return serv
 }

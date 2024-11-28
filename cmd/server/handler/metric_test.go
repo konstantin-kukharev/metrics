@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"io"
@@ -6,8 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/konstantin-kukharev/metrics/cmd/server/metric"
+	dto "github.com/konstantin-kukharev/metrics/cmd/server/metric"
+	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -87,8 +89,8 @@ func Test_server_MetricUpdate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			store := storage.NewMemStorage()
 
-			serv := NewMetricService(store, metric.Gauge(), metric.Counter())
-			srv := NewServer(serv)
+			serv := service.NewMetric(store, dto.Gauge(), dto.Counter())
+			srv := NewMetric(serv)
 
 			request := httptest.NewRequest(http.MethodPost, tt.link, nil)
 			request.SetPathValue("type", tt.pathVal.Type)

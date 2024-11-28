@@ -1,8 +1,16 @@
 package metric
 
-import "github.com/konstantin-kukharev/metrics/cmd/server/internal"
+import "github.com/konstantin-kukharev/metrics/internal"
 
-type Metric struct {
-	Name   string
-	Setter func(s internal.Storage, k, v string) error
+type class struct {
+	name   string
+	setter func(s internal.Storage, k, v string) error
+}
+
+func (m *class) Setter() func(s internal.Storage, k, v string) error {
+	return m.setter
+}
+
+func (m *class) Name() string {
+	return m.name
 }
