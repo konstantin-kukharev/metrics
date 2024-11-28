@@ -9,7 +9,7 @@ import (
 // Gauge Тип float64 - новое значение должно замещать предыдущее.
 func Gauge() *class {
 	return &class{
-		name: "gauge",
+		name: internal.MetricGauge,
 		setter: func(s internal.Storage, k, v string) error {
 			if _, err := strconv.ParseFloat(v, 64); err != nil {
 				return internal.ErrInvalidData

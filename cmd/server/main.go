@@ -9,9 +9,8 @@ import (
 	"github.com/konstantin-kukharev/metrics/cmd/server/metric"
 	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
+	"github.com/konstantin-kukharev/metrics/internal"
 )
-
-var serverAddr = ":8080"
 
 func main() {
 	if err := run(); err != nil {
@@ -32,5 +31,5 @@ func run() error {
 	LinkMetric := "/update/{type}/{name}/{val}"
 	mux.HandleFunc(LinkMetric, srv.MetricUpdate)
 
-	return http.ListenAndServe(serverAddr, mux)
+	return http.ListenAndServe(internal.DefaultServerAddr, mux)
 }

@@ -9,6 +9,7 @@ import (
 	dto "github.com/konstantin-kukharev/metrics/cmd/server/metric"
 	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
+	"github.com/konstantin-kukharev/metrics/internal"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +34,7 @@ func Test_server_MetricUpdate(t *testing.T) {
 		{
 			name:    "add gauge",
 			link:    "/update/gauge/test1/1234/",
-			pathVal: params{Type: "gauge", Name: "test", Value: "1234"},
+			pathVal: params{Type: internal.MetricGauge, Name: "test", Value: "1234"},
 			want: want{
 				code:        http.StatusOK,
 				contentType: "text/plain",
@@ -42,7 +43,7 @@ func Test_server_MetricUpdate(t *testing.T) {
 		{
 			name:    "add counter",
 			link:    "/update/counter/test1/1234/",
-			pathVal: params{Type: "counter", Name: "test", Value: "1234"},
+			pathVal: params{Type: internal.MetricCounter, Name: "test", Value: "1234"},
 			want: want{
 				code:        http.StatusOK,
 				contentType: "text/plain",
@@ -51,7 +52,7 @@ func Test_server_MetricUpdate(t *testing.T) {
 		{
 			name:    "no name",
 			link:    "/update/gauge/test1/1234/",
-			pathVal: params{Type: "gauge", Name: "", Value: "1234"},
+			pathVal: params{Type: internal.MetricGauge, Name: "", Value: "1234"},
 			want: want{
 				code:        http.StatusNotFound,
 				contentType: "text/plain",
@@ -78,7 +79,7 @@ func Test_server_MetricUpdate(t *testing.T) {
 		{
 			name:    "invalid data",
 			link:    "/update/gauge/test1/1234/",
-			pathVal: params{Type: "gauge", Name: "test1", Value: "asdsad"},
+			pathVal: params{Type: internal.MetricGauge, Name: "test1", Value: "asdsad"},
 			want: want{
 				code:        http.StatusBadRequest,
 				contentType: "text/plain",
