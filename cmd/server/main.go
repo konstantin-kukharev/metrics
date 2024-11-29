@@ -30,7 +30,7 @@ func run() error {
 	r := chi.NewRouter()
 	r.Method("POST", "/update/{type}/{name}/{val}", handler.NewAddMetric(serv))
 	r.Method("GET", "/value/{type}/{name}", handler.NewGetMetric(serv))
-	mux := http.NewServeMux()
+	r.Method("GET", "/", handler.NewIndexMetric(serv))
 
-	return http.ListenAndServe(internal.DefaultServerAddr, mux)
+	return http.ListenAndServe(internal.DefaultServerAddr, r)
 }
