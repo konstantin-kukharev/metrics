@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/konstantin-kukharev/metrics/internal"
-	"github.com/konstantin-kukharev/metrics/internal/dto"
+	"github.com/konstantin-kukharev/metrics/pkg/dto"
 	"github.com/stretchr/testify/assert"
 )
 

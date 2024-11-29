@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/konstantin-kukharev/metrics/internal"
-	"github.com/konstantin-kukharev/metrics/internal/dto"
+	"github.com/konstantin-kukharev/metrics/pkg/dto"
 )
 
 type key struct {
