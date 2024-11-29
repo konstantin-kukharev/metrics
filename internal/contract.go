@@ -1,27 +1,27 @@
 package internal
 
 import (
-	"net/http"
 	"runtime"
 )
 
 type Storage interface {
-	Get(k string) ([]byte, bool)
-	Set(k string, v []byte)
-}
-
-type MetricService interface {
-	Get(k string) ([]byte, bool)
+	List() []MetricValue
+	Get(t, k string) (string, bool)
 	Set(t, k string, v string) error
 }
 
-type Handler interface {
-	MetricUpdate(w http.ResponseWriter, r *http.Request)
+type MetricService interface {
+	List() []MetricValue
+	Get(t, k string) ([]byte, bool)
+	Set(t, k string, v string) error
 }
 
 type Metric interface {
 	Name() string
-	Setter() func(s Storage, k, v string) error
+	Encode(v string) ([]byte, error)
+	Decode(v []byte) (string, error)
+	//Addition FiFo or summ
+	Addition(...[]byte) ([]byte, error)
 }
 
 type MetricValue interface {

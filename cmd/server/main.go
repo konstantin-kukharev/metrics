@@ -10,6 +10,8 @@ import (
 	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
 	"github.com/konstantin-kukharev/metrics/internal"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func main() {
@@ -23,13 +25,12 @@ run
 */
 func run() error {
 	store := storage.NewMemStorage()
-
 	serv := service.NewMetric(store, metric.Gauge(), metric.Counter())
-	srv := handler.NewMetric(serv)
 
+	r := chi.NewRouter()
+	r.Method("POST", "/update/{type}/{name}/{val}", handler.NewAddMetric(serv))
+	r.Method("GET", "/value/{type}/{name}", handler.NewGetMetric(serv))
 	mux := http.NewServeMux()
-	LinkMetric := "/update/{type}/{name}/{val}"
-	mux.HandleFunc(LinkMetric, srv.MetricUpdate)
 
 	return http.ListenAndServe(internal.DefaultServerAddr, mux)
 }

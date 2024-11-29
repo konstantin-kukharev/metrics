@@ -1,11 +1,19 @@
 package storage
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+
+	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/internal/dto"
+	"github.com/stretchr/testify/assert"
+)
 
 func TestMemoryStorage(t *testing.T) {
 	type fields struct {
+		t     string
 		key   string
-		value []byte
+		value string
 	}
 	tests := []struct {
 		name   string
@@ -15,31 +23,51 @@ func TestMemoryStorage(t *testing.T) {
 		{
 			name: "set - get test",
 			fields: fields{
-				key:   "t1",
-				value: []byte("test 1"),
+				t:     internal.MetricCounter,
+				key:   "test",
+				value: "33",
 			},
-			want: "test 1",
+			want: "33",
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ms := NewMemStorage()
-			ms.Set(
-				tt.fields.key,
-				tt.fields.value,
-			)
+		t.Run(
+			tt.name,
+			func(t *testing.T) {
+				ms := NewMemStorage()
+				err := ms.Set(
+					tt.fields.t,
+					tt.fields.key,
+					tt.fields.value,
+				)
 
-			val, ok := ms.Get(
-				tt.fields.key,
-			)
+				if err != nil {
+					t.Error(err.Error())
+				}
 
-			if !ok {
-				t.Error("err1")
-			}
+				val, ok := ms.Get(
+					tt.fields.t,
+					tt.fields.key,
+				)
 
-			if got := string(val); got != tt.want {
-				t.Errorf("value = %v, want %v", got, tt.want)
-			}
-		})
+				fmt.Println(ms.storage)
+
+				if !ok {
+					t.Error("err1")
+				}
+
+				if val != tt.want {
+					t.Errorf("value = %v, want %v", val, tt.want)
+				}
+
+				data := ms.List()
+				assert.Equal(t, 1, len(data))
+				assert.Equal(
+					t,
+					dto.NewMetricValue(tt.fields.t, tt.fields.key, val),
+					data[0],
+				)
+			},
+		)
 	}
 }

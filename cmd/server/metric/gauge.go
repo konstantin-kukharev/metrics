@@ -1,6 +1,8 @@
 package metric
 
 import (
+	"encoding/binary"
+	"math"
 	"strconv"
 
 	"github.com/konstantin-kukharev/metrics/internal"
@@ -10,13 +12,25 @@ import (
 func Gauge() *class {
 	return &class{
 		name: internal.MetricGauge,
-		setter: func(s internal.Storage, k, v string) error {
-			if _, err := strconv.ParseFloat(v, 64); err != nil {
-				return internal.ErrInvalidData
+		encoder: func(v string) ([]byte, error) {
+			cv, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return []byte{}, internal.ErrInvalidData
 			}
-			s.Set(k, []byte(v))
 
-			return nil
+			bits := math.Float64bits(cv)
+			bytes := make([]byte, 8)
+			binary.LittleEndian.PutUint64(bytes, bits)
+			return bytes, nil
+		},
+		decoder: func(v []byte) (string, error) {
+			bits := binary.LittleEndian.Uint64(v)
+			fv := math.Float64frombits(bits)
+			sv := strconv.FormatFloat(fv, 'f', 15, 64)
+			return sv, nil
+		},
+		addition: func(v ...[]byte) ([]byte, error) {
+			return v[0], nil
 		},
 	}
 }

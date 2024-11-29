@@ -1,27 +1,49 @@
 package storage
 
-import "sync"
+import (
+	"sync"
 
-type memStorage struct {
-	mx      *sync.Mutex
-	storage map[string][]byte
+	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/internal/dto"
+)
+
+type key struct {
+	c, n string
 }
 
-func (s *memStorage) Get(k string) ([]byte, bool) {
-	v, ok := s.storage[k]
+type memStorage struct {
+	mx      *sync.RWMutex
+	storage map[key]string
+}
+
+func (s *memStorage) List() []internal.MetricValue {
+	res := make([]internal.MetricValue, 0, len(s.storage))
+	for k, v := range s.storage {
+		res = append(res, dto.NewMetricValue(k.c, k.n, v))
+	}
+
+	return res
+}
+
+func (s *memStorage) Get(t, k string) (string, bool) {
+	s.mx.RLock()
+	defer s.mx.RUnlock()
+
+	v, ok := s.storage[key{c: t, n: k}]
 	return v, ok
 }
 
-func (s *memStorage) Set(k string, v []byte) {
+func (s *memStorage) Set(t, k string, v string) error {
 	s.mx.Lock()
 	defer s.mx.Unlock()
 
-	s.storage[k] = v
+	s.storage[key{c: t, n: k}] = v
+	return nil
 }
 
 func NewMemStorage() *memStorage {
 	return &memStorage{
-		mx:      &sync.Mutex{},
-		storage: map[string][]byte{},
+		mx:      &sync.RWMutex{},
+		storage: map[key]string{},
 	}
 }

@@ -21,7 +21,7 @@ func (r *rest) Report(d []internal.MetricValue) {
 			continue
 		}
 		defer res.Body.Close()
-		fmt.Println(res.StatusCode) //14339
+		fmt.Println(res.StatusCode)
 	}
 }
 

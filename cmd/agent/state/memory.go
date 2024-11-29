@@ -7,25 +7,8 @@ import (
 	"sync"
 
 	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/internal/dto"
 )
-
-type memVal struct {
-	t string
-	n string
-	v string
-}
-
-func (mv memVal) Type() string {
-	return mv.t
-}
-
-func (mv memVal) Name() string {
-	return mv.n
-}
-
-func (mv memVal) Value() string {
-	return mv.v
-}
 
 type memory struct {
 	mx      *sync.RWMutex
@@ -86,22 +69,22 @@ func (d *memory) Data() []internal.MetricValue {
 	for n, v := range d.gauge {
 		res = append(
 			res,
-			memVal{
-				t: internal.MetricGauge,
-				n: n,
-				v: strconv.FormatFloat(v, 'f', 15, 64),
-			},
+			dto.NewMetricValue(
+				internal.MetricGauge,
+				n,
+				strconv.FormatFloat(v, 'f', 15, 64),
+			),
 		)
 	}
 
 	for n, v := range d.counter {
 		res = append(
 			res,
-			memVal{
-				t: internal.MetricCounter,
-				n: n,
-				v: strconv.FormatInt(v, 10),
-			},
+			dto.NewMetricValue(
+				internal.MetricCounter,
+				n,
+				strconv.FormatInt(v, 10),
+			),
 		)
 	}
 

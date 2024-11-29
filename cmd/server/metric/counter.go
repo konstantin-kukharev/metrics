@@ -11,26 +11,32 @@ import (
 func Counter() *class {
 	return &class{
 		name: internal.MetricCounter,
-		setter: func(s internal.Storage, k, v string) error {
-			var summ int64
-			i1, err := strconv.ParseInt(v, 10, 64)
+		encoder: func(v string) ([]byte, error) {
+			iv, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
-				return internal.ErrInvalidData
+				return []byte{}, internal.ErrInvalidData
 			}
 
-			summ += i1
-
-			val, ok := s.Get(k)
-			if ok {
-				i2 := int64(binary.LittleEndian.Uint64(val))
-				summ += i2
+			bv := make([]byte, 8)
+			binary.LittleEndian.PutUint64(bv, uint64(iv))
+			return bv, nil
+		},
+		decoder: func(v []byte) (string, error) {
+			iv := int64(binary.LittleEndian.Uint64(v))
+			sv := strconv.FormatInt(iv, 10)
+			return sv, nil
+		},
+		addition: func(v ...[]byte) ([]byte, error) {
+			var summ int64
+			for _, b := range v {
+				iv := int64(binary.LittleEndian.Uint64(b))
+				summ += iv
 			}
 
-			b := make([]byte, 8)
-			binary.LittleEndian.PutUint64(b, uint64(summ))
-			s.Set(k, b)
+			bv := make([]byte, 8)
+			binary.LittleEndian.PutUint64(bv, uint64(summ))
 
-			return nil
+			return bv, nil
 		},
 	}
 }
