@@ -13,7 +13,7 @@ type metricIndex struct {
 
 func (s *metricIndex) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html")
-	var body string = "<ul>"
+	body := "<ul>"
 	for _, d := range s.service.List() {
 		body += fmt.Sprintf("<li>%s\t%s\t%s</li>", d.Type(), d.Name(), d.Value())
 	}
