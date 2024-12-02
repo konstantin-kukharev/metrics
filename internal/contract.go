@@ -2,6 +2,7 @@ package internal
 
 import (
 	"runtime"
+	"time"
 )
 
 type Storage interface {
@@ -36,5 +37,15 @@ type StateMemory interface {
 }
 
 type AgentReporter interface {
-	Report([]MetricValue)
+	Report(serverAddress string, data []MetricValue)
+}
+
+type AgentSettings interface {
+	ServerAddress() string
+	ReportInterval() time.Duration
+	PoolInterval() time.Duration
+}
+
+type ServerSettings interface {
+	Address() string
 }

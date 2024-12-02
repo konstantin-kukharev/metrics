@@ -66,6 +66,9 @@ func (d *memory) Update(m *runtime.MemStats) {
 func (d *memory) Data() []internal.MetricValue {
 	l := len(d.counter) + len(d.gauge)
 	res := make([]internal.MetricValue, 0, l)
+	d.mx.RLock()
+	defer d.mx.RUnlock()
+
 	for n, v := range d.gauge {
 		res = append(
 			res,

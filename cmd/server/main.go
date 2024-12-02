@@ -8,8 +8,8 @@ import (
 	"github.com/konstantin-kukharev/metrics/cmd/server/handler"
 	"github.com/konstantin-kukharev/metrics/cmd/server/metric"
 	"github.com/konstantin-kukharev/metrics/cmd/server/service"
+	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
-	"github.com/konstantin-kukharev/metrics/internal"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -24,13 +24,14 @@ func main() {
 run
 */
 func run() error {
+	conf := settings.New()
 	store := storage.NewMemStorage()
-	serv := service.NewMetric(store, metric.Gauge(), metric.Counter())
+	serv := service.NewMetric(conf, store, metric.Gauge(), metric.Counter())
 
 	r := chi.NewRouter()
 	r.Method("POST", "/update/{type}/{name}/{val}", handler.NewAddMetric(serv))
 	r.Method("GET", "/value/{type}/{name}", handler.NewGetMetric(serv))
 	r.Method("GET", "/", handler.NewIndexMetric(serv))
 
-	return http.ListenAndServe(internal.DefaultServerAddr, r)
+	return http.ListenAndServe(conf.Address(), r)
 }

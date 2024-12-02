@@ -8,12 +8,27 @@ import (
 
 	dto "github.com/konstantin-kukharev/metrics/cmd/server/metric"
 	"github.com/konstantin-kukharev/metrics/cmd/server/service"
+	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
 	"github.com/konstantin-kukharev/metrics/internal"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var srv internal.MetricService
+
+func newService() internal.MetricService {
+	if srv != nil {
+		return srv
+	}
+
+	cfg := settings.New()
+	store := storage.NewMemStorage()
+	srv = service.NewMetric(cfg, store, dto.Gauge(), dto.Counter())
+
+	return srv
+}
 
 func Test_server_MetricAdd(t *testing.T) {
 	type want struct {
@@ -27,8 +42,7 @@ func Test_server_MetricAdd(t *testing.T) {
 		Value string
 	}
 
-	store := storage.NewMemStorage()
-	serv := service.NewMetric(store, dto.Gauge(), dto.Counter())
+	serv := newService()
 
 	tests := []struct {
 		name    string
@@ -165,8 +179,7 @@ func Test_server_MetricGet(t *testing.T) {
 		Value string
 	}
 
-	store := storage.NewMemStorage()
-	serv := service.NewMetric(store, dto.Gauge(), dto.Counter())
+	serv := newService()
 
 	tests := []struct {
 		name    string
@@ -226,12 +239,10 @@ func Test_server_MetricGet(t *testing.T) {
 		})
 	}
 
-	newStore := storage.NewMemStorage()
-	newServ := service.NewMetric(newStore, dto.Gauge(), dto.Counter())
 	linkBrokenGet := "/update/gauge/test/123"
 	requestBrokenGet := httptest.NewRequest(http.MethodGet, linkBrokenGet, nil)
 	w := httptest.NewRecorder()
-	hNewGet := NewAddMetric(newServ)
+	hNewGet := NewAddMetric(serv)
 	hNewGet.ServeHTTP(w, requestBrokenGet)
 	resNewGet := w.Result()
 	defer resNewGet.Body.Close()
@@ -243,8 +254,7 @@ func Test_server_MetricList(t *testing.T) {
 		code int
 	}
 
-	store := storage.NewMemStorage()
-	serv := service.NewMetric(store, dto.Gauge(), dto.Counter())
+	serv := newService()
 
 	tests := []struct {
 		name string

@@ -5,6 +5,7 @@ import (
 )
 
 type metric struct {
+	cfg      internal.ServerSettings
 	storage  internal.Storage
 	metric   map[string]internal.Metric
 	cacheKey string
@@ -77,8 +78,9 @@ func (s *metric) Set(t, k string, v string) error {
 	return s.storage.Set(t, k, resultVal)
 }
 
-func NewMetric(s internal.Storage, m ...internal.Metric) *metric {
+func NewMetric(cfg internal.ServerSettings, s internal.Storage, m ...internal.Metric) *metric {
 	srv := &metric{
+		cfg:     cfg,
 		storage: s,
 		metric:  map[string]internal.Metric{},
 	}
