@@ -58,7 +58,7 @@ func TestGaugeDecode(t *testing.T) {
 			fields: fields{
 				b: []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x26, 0x40},
 			},
-			want: "11.000",
+			want: "11",
 		},
 	}
 	for _, tt := range tests {

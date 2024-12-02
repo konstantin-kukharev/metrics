@@ -52,12 +52,12 @@ func Test_server_MetricAdd(t *testing.T) {
 	}{
 		{
 			name:    "add gauge",
-			pathVal: params{Type: internal.MetricGauge, Name: "test", Value: "1234"},
+			pathVal: params{Type: internal.MetricGauge, Name: "test", Value: "1234.000"},
 			srv:     serv,
 			want: want{
 				code:        http.StatusOK,
 				contentType: "text/plain",
-				value:       "1234.000",
+				value:       "1234",
 			},
 		},
 		{
