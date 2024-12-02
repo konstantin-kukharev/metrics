@@ -10,10 +10,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMetricServiceSet(t *testing.T) {
-	conf := settings.New()
+var srv internal.MetricService
+
+func newService() internal.MetricService {
+	if srv != nil {
+		return srv
+	}
+
+	cfg := settings.New()
 	store := storage.NewMemStorage()
-	srv := NewMetric(conf, store, dto.Gauge(), dto.Counter())
+	srv = NewMetric(cfg, store, dto.Gauge(), dto.Counter())
+
+	return srv
+}
+
+func TestMetricServiceSet(t *testing.T) {
 
 	type fields struct {
 		t     string
@@ -34,7 +45,7 @@ func TestMetricServiceSet(t *testing.T) {
 				key:   "test",
 				value: "33",
 			},
-			srv:  srv,
+			srv:  newService(),
 			want: nil,
 		},
 		{
@@ -44,7 +55,7 @@ func TestMetricServiceSet(t *testing.T) {
 				key:   "",
 				value: "33",
 			},
-			srv:  srv,
+			srv:  newService(),
 			want: internal.ErrWrongMetricName,
 		},
 		{
@@ -54,7 +65,7 @@ func TestMetricServiceSet(t *testing.T) {
 				key:   "asd",
 				value: "33",
 			},
-			srv:  srv,
+			srv:  newService(),
 			want: internal.ErrWrongMetricType,
 		},
 		{
@@ -64,7 +75,7 @@ func TestMetricServiceSet(t *testing.T) {
 				key:   "asd",
 				value: "asdasdas",
 			},
-			srv:  srv,
+			srv:  newService(),
 			want: internal.ErrInvalidData,
 		},
 		{
@@ -74,7 +85,7 @@ func TestMetricServiceSet(t *testing.T) {
 				key:   "asd",
 				value: "11",
 			},
-			srv:  srv,
+			srv:  newService(),
 			want: nil,
 		},
 		{
@@ -84,7 +95,7 @@ func TestMetricServiceSet(t *testing.T) {
 				key:   "asd",
 				value: "11",
 			},
-			srv:  srv,
+			srv:  newService(),
 			want: nil,
 		},
 	}
@@ -103,12 +114,6 @@ func TestMetricServiceSet(t *testing.T) {
 }
 
 func TestMetricServiceGet(t *testing.T) {
-	conf := settings.New()
-	store := storage.NewMemStorage()
-	gauge := dto.Gauge()
-	counter := dto.Counter()
-	srv := NewMetric(conf, store, gauge, counter)
-
 	err := srv.Set(
 		internal.MetricCounter,
 		"test123",
@@ -116,7 +121,7 @@ func TestMetricServiceGet(t *testing.T) {
 	)
 
 	assert.Nil(t, err)
-	byte3, err := counter.Encode("33")
+	byte3 := []byte("33")
 
 	assert.Nil(t, err)
 
@@ -142,7 +147,7 @@ func TestMetricServiceGet(t *testing.T) {
 				t:   internal.MetricCounter,
 				key: "test1",
 			},
-			srv:  srv,
+			srv:  newService(),
 			want: want{[]byte{}, false},
 		},
 		{
@@ -151,7 +156,7 @@ func TestMetricServiceGet(t *testing.T) {
 				t:   internal.MetricCounter,
 				key: "test123",
 			},
-			srv:  srv,
+			srv:  newService(),
 			want: want{byte3, true},
 		},
 	}

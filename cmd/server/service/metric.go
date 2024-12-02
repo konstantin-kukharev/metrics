@@ -30,12 +30,7 @@ func (s *metric) Get(t, k string) ([]byte, bool) {
 		return []byte{}, ok
 	}
 
-	res, err := s.metric[t].Encode(val)
-	if err != nil {
-		return []byte{}, ok
-	}
-
-	return []byte(res), true
+	return []byte(val), true
 }
 
 func (s *metric) Set(t, k string, v string) error {
