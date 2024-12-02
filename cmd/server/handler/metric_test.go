@@ -43,7 +43,7 @@ func Test_server_MetricAdd(t *testing.T) {
 			want: want{
 				code:        http.StatusOK,
 				contentType: "text/plain",
-				value:       "1234.000000000000000",
+				value:       "1234.000",
 			},
 		},
 		{
