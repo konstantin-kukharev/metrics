@@ -26,7 +26,7 @@ func Gauge() *class {
 		decoder: func(v []byte) (string, error) {
 			bits := binary.LittleEndian.Uint64(v)
 			fv := math.Float64frombits(bits)
-			sv := strconv.FormatFloat(fv, 'f', 3, 64)
+			sv := strconv.FormatFloat(fv, 'f', internal.DefaultFloatPrecision, 64)
 			return sv, nil
 		},
 		addition: func(v ...[]byte) ([]byte, error) {

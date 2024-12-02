@@ -75,7 +75,7 @@ func (d *memory) Data() []internal.MetricValue {
 			dto.NewMetricValue(
 				internal.MetricGauge,
 				n,
-				strconv.FormatFloat(v, 'f', 3, 64),
+				strconv.FormatFloat(v, 'f', internal.DefaultFloatPrecision, 64),
 			),
 		)
 	}
