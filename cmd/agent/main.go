@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/konstantin-kukharev/metrics/cmd/agent/report"
 	"github.com/konstantin-kukharev/metrics/cmd/agent/service"
 	"github.com/konstantin-kukharev/metrics/cmd/agent/settings"
 	"github.com/konstantin-kukharev/metrics/cmd/agent/state"
+	"github.com/konstantin-kukharev/metrics/internal"
 )
 
 func main() {
@@ -17,6 +19,8 @@ func main() {
 	s := state.NewMemory()
 	r := report.NewRest(c)
 	srv := service.NewState(conf, s, r)
+
+	time.Sleep(internal.DefaultPoolInterval)
 
 	if err := srv.Run(); err != nil {
 		fmt.Printf(
