@@ -13,8 +13,8 @@ func fromFlag(s *Config) {
 	flag.IntVar(&ri, "r", 10, "report interval time duration")
 	flag.IntVar(&pi, "p", 2, "pool interval time duration")
 
-	s.ReportInterval = time.Duration(ri)
-	s.PoolInterval = time.Duration(pi)
+	s.ReportInterval = time.Duration(ri * int(time.Second))
+	s.PoolInterval = time.Duration(pi * int(time.Second))
 
 	flag.Parse()
 }
