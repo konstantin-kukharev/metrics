@@ -3,11 +3,11 @@ package handler
 import (
 	"net/http"
 
-	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 )
 
 type metricGet struct {
-	service internal.MetricService
+	service service.Metric
 }
 
 func (s *metricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +30,7 @@ func (s *metricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 }
 
-func NewGetMetric(srv internal.MetricService) *metricGet {
+func NewGetMetric(srv service.Metric) *metricGet {
 	serv := &metricGet{service: srv}
 	return serv
 }

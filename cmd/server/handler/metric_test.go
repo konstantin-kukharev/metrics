@@ -6,26 +6,26 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	dto "github.com/konstantin-kukharev/metrics/cmd/server/metric"
 	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
 	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/pkg/metric"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var srv internal.MetricService
+var srv service.Metric
 
-func newService() internal.MetricService {
+func newService() service.Metric {
 	if srv != nil {
 		return srv
 	}
 
 	cfg := settings.New()
 	store := storage.NewMemStorage()
-	srv = service.NewMetric(cfg, store, dto.Gauge(), dto.Counter())
+	srv = service.NewMetric(cfg, store, &metric.Gauge{}, &metric.Counter{})
 
 	return srv
 }
@@ -47,7 +47,7 @@ func Test_server_MetricAdd(t *testing.T) {
 	tests := []struct {
 		name    string
 		pathVal params
-		srv     internal.MetricService
+		srv     service.Metric
 		want    want
 	}{
 		{
@@ -184,7 +184,7 @@ func Test_server_MetricGet(t *testing.T) {
 	tests := []struct {
 		name    string
 		pathVal params
-		srv     internal.MetricService
+		srv     service.Metric
 		want    want
 	}{
 		{
@@ -258,7 +258,7 @@ func Test_server_MetricList(t *testing.T) {
 
 	tests := []struct {
 		name string
-		srv  internal.MetricService
+		srv  service.Metric
 		want want
 	}{
 		{

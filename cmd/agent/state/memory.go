@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/konstantin-kukharev/metrics/internal"
-	"github.com/konstantin-kukharev/metrics/pkg/dto"
+	"github.com/konstantin-kukharev/metrics/pkg/metric"
 )
 
 type memory struct {
@@ -63,31 +63,43 @@ func (d *memory) Update(m *runtime.MemStats) {
 	d.counter["PollCount"] = d.counter["PollCount"] + 1
 }
 
-func (d *memory) Data() []internal.MetricValue {
+func (d *memory) Data() []metric.Value {
 	l := len(d.counter) + len(d.gauge)
-	res := make([]internal.MetricValue, 0, l)
+	res := make([]metric.Value, 0, l)
 	d.mx.RLock()
 	defer d.mx.RUnlock()
 
 	for n, v := range d.gauge {
+		val, err := metric.NewValue(
+			&metric.Gauge{},
+			n,
+			strconv.FormatFloat(v, 'f', internal.DefaultFloatPrecision, 64),
+		)
+		//todo: catch err
+		if err != nil {
+			continue
+		}
+
 		res = append(
 			res,
-			dto.NewMetricValue(
-				internal.MetricGauge,
-				n,
-				strconv.FormatFloat(v, 'f', internal.DefaultFloatPrecision, 64),
-			),
+			val,
 		)
 	}
 
 	for n, v := range d.counter {
+		val, err := metric.NewValue(
+			&metric.Counter{},
+			n,
+			strconv.FormatInt(v, 10),
+		)
+		//todo: catch err
+		if err != nil {
+			continue
+		}
+
 		res = append(
 			res,
-			dto.NewMetricValue(
-				internal.MetricCounter,
-				n,
-				strconv.FormatInt(v, 10),
-			),
+			val,
 		)
 	}
 

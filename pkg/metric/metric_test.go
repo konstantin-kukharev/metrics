@@ -33,7 +33,7 @@ func TestGaugeEncode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := Gauge()
+			g := Gauge{}
 			b, err := g.Encode(tt.fields.str)
 			if err != nil {
 				assert.Equal(t, tt.want, err)
@@ -63,7 +63,7 @@ func TestGaugeDecode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := Gauge()
+			g := Gauge{}
 			b, err := g.Decode(tt.fields.b)
 			if err != nil {
 				assert.Equal(t, tt.want, err)
@@ -97,8 +97,8 @@ func TestGaugeAddition(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := Gauge()
-			b, err := g.Addition(tt.fields.b...)
+			g := Gauge{}
+			b, err := g.Aggregate(tt.fields.b...)
 			if err != nil {
 				assert.Equal(t, tt.want, err)
 				return
@@ -131,8 +131,8 @@ func TestCounterAddition(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := Counter()
-			b, err := g.Addition(tt.fields.b...)
+			g := Counter{}
+			b, err := g.Aggregate(tt.fields.b...)
 			if err != nil {
 				assert.Equal(t, tt.want, err)
 				return
@@ -168,7 +168,7 @@ func TestCounterEncode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := Counter()
+			g := Counter{}
 			b, err := g.Encode(tt.fields.str)
 			if err != nil {
 				assert.Equal(t, tt.want, err)
@@ -198,14 +198,14 @@ func TestCounterDecode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := Counter()
+			g := Counter{}
 			b, err := g.Decode(tt.fields.b)
 			if err != nil {
 				assert.Equal(t, tt.want, err)
 				return
 			}
 			assert.Equal(t, tt.want, b)
-			assert.Equal(t, internal.MetricCounter, g.Name())
+			assert.Equal(t, internal.MetricCounter, g.GetName())
 		})
 	}
 }

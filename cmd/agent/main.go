@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/konstantin-kukharev/metrics/cmd/agent/report"
@@ -19,10 +20,12 @@ func main() {
 
 	fmt.Printf(
 		"runninig agent\r\nreport on %s\r\nreport interval: %s sec.\r\npool interval: %s sec.\r\n",
-		conf.ServerAddress(),
-		conf.ReportInterval(),
-		conf.PoolInterval(),
+		conf.GetServerAddress(),
+		conf.GetReportInterval(),
+		conf.GetPoolInterval(),
 	)
 
-	srv.Run()
+	if err := srv.Run(); err != nil {
+		log.Fatal(err)
+	}
 }

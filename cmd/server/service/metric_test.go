@@ -3,25 +3,17 @@ package service
 import (
 	"testing"
 
-	dto "github.com/konstantin-kukharev/metrics/cmd/server/metric"
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
 	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/pkg/metric"
 	"github.com/stretchr/testify/assert"
 )
 
-var srv internal.MetricService
-
-func newService() internal.MetricService {
-	if srv != nil {
-		return srv
-	}
-
-	cfg := settings.New()
+func newService() Metric {
+	cfg := &settings.Config{Address: internal.DefaultServerAddr}
 	store := storage.NewMemStorage()
-	srv = NewMetric(cfg, store, dto.Gauge(), dto.Counter())
-
-	return srv
+	return NewMetric(cfg, store, &metric.Gauge{}, &metric.Counter{})
 }
 
 func TestMetricServiceSet(t *testing.T) {
@@ -35,7 +27,7 @@ func TestMetricServiceSet(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		srv    internal.MetricService
+		srv    Metric
 		want   interface{}
 	}{
 		{
@@ -114,14 +106,14 @@ func TestMetricServiceSet(t *testing.T) {
 }
 
 func TestMetricServiceGet(t *testing.T) {
-	err := srv.Set(
+	ns := newService()
+	err := ns.Set(
 		internal.MetricCounter,
-		"test123",
+		"addTest",
 		"33",
 	)
 
 	assert.Nil(t, err)
-	byte3 := []byte("33")
 
 	assert.Nil(t, err)
 
@@ -138,26 +130,26 @@ func TestMetricServiceGet(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		srv    internal.MetricService
+		srv    Metric
 		want   want
 	}{
 		{
 			name: "get test 1",
 			fields: fields{
 				t:   internal.MetricCounter,
-				key: "test1",
+				key: "test999999",
 			},
-			srv:  newService(),
+			srv:  ns,
 			want: want{[]byte{}, false},
 		},
 		{
 			name: "get test 2",
 			fields: fields{
 				t:   internal.MetricCounter,
-				key: "test123",
+				key: "addTest",
 			},
-			srv:  newService(),
-			want: want{byte3, true},
+			srv:  ns,
+			want: want{[]byte("33"), true},
 		},
 	}
 	for _, tt := range tests {
@@ -167,8 +159,8 @@ func TestMetricServiceGet(t *testing.T) {
 				tt.fields.key,
 			)
 
-			assert.Equal(t, ok, tt.want.ok)
-			assert.Equal(t, res, tt.want.res)
+			assert.Equal(t, tt.want.ok, ok)
+			assert.Equal(t, tt.want.res, res)
 		},
 		)
 	}

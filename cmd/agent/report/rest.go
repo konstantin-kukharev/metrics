@@ -1,27 +1,34 @@
 package report
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 
-	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/pkg/metric"
 )
 
 type rest struct {
 	cli *http.Client
 }
 
-func (r *rest) Report(server string, d []internal.MetricValue) {
+func (r *rest) Report(server string, d []metric.Value) error {
+	var errs error
 	for _, v := range d {
-		url := "http://" + server + "/update/" + v.Type() + "/" + v.Name() + "/" + v.Value()
+		val, err := v.GetValue()
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+		url := "http://" + server + "/update/" + v.Type() + "/" + v.Name() + "/" + val
 		res, err := r.cli.Post(url, "text/plain", http.NoBody)
 		if err != nil {
-			fmt.Println(err)
+			errs = errors.Join(errs, err)
 			continue
 		}
 		defer res.Body.Close()
-		fmt.Println(res.StatusCode)
 	}
+
+	return errs
 }
 
 func NewRest(cli *http.Client) *rest {

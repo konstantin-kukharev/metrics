@@ -4,11 +4,12 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 	"github.com/konstantin-kukharev/metrics/internal"
 )
 
 type metricAdd struct {
-	service internal.MetricService
+	service service.Metric
 }
 
 // - Прием метрик по протоколу НТТР методом POST
@@ -44,7 +45,7 @@ func (s *metricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func NewAddMetric(srv internal.MetricService) *metricAdd {
+func NewAddMetric(srv service.Metric) *metricAdd {
 	serv := &metricAdd{service: srv}
 	return serv
 }

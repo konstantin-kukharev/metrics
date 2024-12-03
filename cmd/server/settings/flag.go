@@ -6,8 +6,8 @@ import (
 	"github.com/konstantin-kukharev/metrics/internal"
 )
 
-func fromFlag(s *settings) {
-	s.address = *flag.String("a", internal.DefaultServerAddr, "server address")
+func fromFlag(s *Config) {
+	s.Address = *flag.String("a", internal.DefaultServerAddr, "server address")
 
 	flag.Parse()
 }

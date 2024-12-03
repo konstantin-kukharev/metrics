@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/konstantin-kukharev/metrics/internal"
-	"github.com/konstantin-kukharev/metrics/pkg/dto"
+	"github.com/konstantin-kukharev/metrics/pkg/metric"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMemoryStorage(t *testing.T) {
 	type fields struct {
-		t     string
+		t     metric.Type
 		key   string
 		value string
 	}
@@ -23,7 +22,7 @@ func TestMemoryStorage(t *testing.T) {
 		{
 			name: "set - get test",
 			fields: fields{
-				t:     internal.MetricCounter,
+				t:     &metric.Counter{},
 				key:   "test",
 				value: "33",
 			},
@@ -62,9 +61,11 @@ func TestMemoryStorage(t *testing.T) {
 
 				data := ms.List()
 				assert.Equal(t, 1, len(data))
+				got, err := metric.NewValue(tt.fields.t, tt.fields.key, val)
+				assert.Nil(t, err)
 				assert.Equal(
 					t,
-					dto.NewMetricValue(tt.fields.t, tt.fields.key, val),
+					got,
 					data[0],
 				)
 			},

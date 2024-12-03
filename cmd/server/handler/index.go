@@ -4,18 +4,23 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 )
 
 type metricIndex struct {
-	service internal.MetricService
+	service service.Metric
 }
 
 func (s *metricIndex) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html")
 	body := "<ul>"
 	for _, d := range s.service.List() {
-		body += fmt.Sprintf("<li>%s\t%s\t%s</li>", d.Type(), d.Name(), d.Value())
+		val, err := d.GetValue()
+		if err != nil {
+			body += fmt.Sprintf("<li>%s\t%s\t%s</li>", d.Type(), d.Name(), err.Error())
+			continue
+		}
+		body += fmt.Sprintf("<li>%s\t%s\t%s</li>", d.Type(), d.Name(), val)
 	}
 
 	body += "</ul>"
@@ -23,7 +28,7 @@ func (s *metricIndex) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(body))
 }
 
-func NewIndexMetric(srv internal.MetricService) *metricIndex {
+func NewIndexMetric(srv service.Metric) *metricIndex {
 	serv := &metricIndex{service: srv}
 	return serv
 }
