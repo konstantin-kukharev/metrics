@@ -41,8 +41,8 @@ func NewState(
 	r report.AgentReporter) *stateService {
 	return &stateService{
 		cfg:        cfg,
-		nextPool:   time.Now(),
-		nextReport: time.Now(),
+		nextPool:   time.Now().Add(cfg.GetPoolInterval()),
+		nextReport: time.Now().Add(cfg.GetReportInterval()),
 		m:          m,
 		r:          r,
 	}
