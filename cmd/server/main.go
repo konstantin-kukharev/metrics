@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"log"
@@ -34,10 +33,11 @@ func run() error {
 	r.Method("GET", "/value/{type}/{name}", handler.NewGetMetric(serv))
 	r.Method("GET", "/", handler.NewIndexMetric(serv))
 
-	fmt.Printf(
-		"runninig server on \"%s\"\r\n",
-		conf.GetAddress(),
-	)
+	err := http.ListenAndServe(conf.GetAddress(), r)
+	// fmt.Printf(
+	// 	"runninig server on \"%s\"\r\n",
+	// 	conf.GetAddress(),
+	// )
 
-	return http.ListenAndServe(conf.GetAddress(), r)
+	return err
 }

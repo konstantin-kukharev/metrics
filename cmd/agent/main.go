@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -18,14 +17,14 @@ func main() {
 	r := report.NewRest(c)
 	srv := service.NewState(conf, s, r)
 
-	fmt.Printf(
-		"runninig agent\r\nreport on %s\r\nreport interval: %s sec.\r\npool interval: %s sec.\r\n",
-		conf.GetServerAddress(),
-		conf.GetReportInterval(),
-		conf.GetPoolInterval(),
-	)
-
 	if err := srv.Run(); err != nil {
+		// fmt.Printf(
+		// 	"runninig agent\r\nreport on %s\r\nreport interval: %s sec.\r\npool interval: %s sec.\r\n",
+		// 	conf.GetServerAddress(),
+		// 	conf.GetReportInterval(),
+		// 	conf.GetPoolInterval(),
+		// )
+
 		log.Fatal(err)
 	}
 }
