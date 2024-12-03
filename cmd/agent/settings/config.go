@@ -26,8 +26,8 @@ func (c *Config) GetPoolInterval() time.Duration {
 	return c.PoolInterval
 }
 
-func (s *Config) GetReportInterval() time.Duration {
-	return s.ReportInterval
+func (c *Config) GetReportInterval() time.Duration {
+	return c.ReportInterval
 }
 
 func New() *Config {
