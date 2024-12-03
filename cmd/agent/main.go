@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/konstantin-kukharev/metrics/cmd/agent/report"
 	"github.com/konstantin-kukharev/metrics/cmd/agent/service"
@@ -18,8 +17,6 @@ func main() {
 	s := state.NewMemory()
 	r := report.NewRest(c)
 	srv := service.NewState(conf, s, r)
-
-	time.Sleep(time.Second * 1)
 
 	if err := srv.Run(); err != nil {
 		fmt.Printf(

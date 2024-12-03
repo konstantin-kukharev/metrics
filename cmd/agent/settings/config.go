@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/konstantin-kukharev/metrics/internal"
@@ -37,6 +38,8 @@ func New() *Config {
 		ReportInterval: internal.DefaultReportInterval,
 	}
 	fromFlag(c)
+
+	fmt.Println(c.PoolInterval)
 
 	return c
 }
