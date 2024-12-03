@@ -19,6 +19,7 @@ func (c *Config) GetAddress() string {
 func New() *Config {
 	c := &Config{Address: internal.DefaultServerAddr}
 	fromFlag(c)
+	fromEnv(c)
 
 	return c
 }

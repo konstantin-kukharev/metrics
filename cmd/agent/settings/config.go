@@ -14,8 +14,8 @@ type Settings interface {
 
 type Config struct {
 	Address        string
-	PoolInterval   time.Duration
-	ReportInterval time.Duration
+	PoolInterval   int
+	ReportInterval int
 }
 
 func (c *Config) GetServerAddress() string {
@@ -23,13 +23,16 @@ func (c *Config) GetServerAddress() string {
 }
 
 func (c *Config) GetPoolInterval() time.Duration {
-	return c.PoolInterval
+	return time.Duration(c.PoolInterval * int(time.Second))
 }
 
 func (c *Config) GetReportInterval() time.Duration {
-	return c.ReportInterval
+	return time.Duration(c.ReportInterval * int(time.Second))
 }
 
+// Если указана переменная окружения, то используется она.
+// Если нет переменной окружения, но есть аргумент командной строки (флаг), то используется он.
+// Если нет ни переменной окружения, ни флага, то используется значение по умолчанию.
 func New() *Config {
 	c := &Config{
 		Address:        internal.DefaultServerAddr,
@@ -37,6 +40,7 @@ func New() *Config {
 		ReportInterval: internal.DefaultReportInterval,
 	}
 	fromFlag(c)
+	fromEnv(c)
 
 	return c
 }

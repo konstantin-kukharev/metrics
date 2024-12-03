@@ -20,7 +20,7 @@ func main() {
 	r := report.NewRest(c)
 	srv := service.NewState(conf, s, r)
 
-	time.Sleep(internal.DefaultPoolInterval)
+	time.Sleep(internal.DefaultPoolInterval * time.Second)
 
 	if err := srv.Run(); err != nil {
 		fmt.Printf(
