@@ -7,9 +7,9 @@ import (
 )
 
 func fromFlag(s *Config) {
-	s.Address = *flag.String("a", internal.DefaultServerAddr, "server address")
-	s.ReportInterval = *flag.Duration("r", internal.DefaultReportInterval, "report interval time duration in seconds")
-	s.PoolInterval = *flag.Duration("p", internal.DefaultPoolInterval, "pool interval time duration in seconds")
+	flag.StringVar(&s.Address, "a", internal.DefaultServerAddr, "server address")
+	flag.DurationVar(&s.ReportInterval, "r", internal.DefaultReportInterval, "report interval time duration")
+	flag.DurationVar(&s.PoolInterval, "p", internal.DefaultPoolInterval, "pool interval time duration")
 
 	flag.Parse()
 }

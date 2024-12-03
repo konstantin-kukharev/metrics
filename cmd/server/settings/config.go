@@ -1,6 +1,8 @@
 package settings
 
-import "github.com/konstantin-kukharev/metrics/internal"
+import (
+	"github.com/konstantin-kukharev/metrics/internal"
+)
 
 type Settings interface {
 	GetAddress() string

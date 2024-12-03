@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"net/http"
 
 	"log"
@@ -25,6 +27,7 @@ run
 */
 func run() error {
 	conf := settings.New()
+	flag.Parse()
 	store := storage.NewMemStorage()
 	serv := service.NewMetric(conf, store, &metric.Gauge{}, &metric.Counter{})
 
@@ -33,11 +36,12 @@ func run() error {
 	r.Method("GET", "/value/{type}/{name}", handler.NewGetMetric(serv))
 	r.Method("GET", "/", handler.NewIndexMetric(serv))
 
+	fmt.Printf(
+		"runninig server on \"%s\"\r\n",
+		conf.GetAddress(),
+	)
+
 	err := http.ListenAndServe(conf.GetAddress(), r)
-	// fmt.Printf(
-	// 	"runninig server on \"%s\"\r\n",
-	// 	conf.GetAddress(),
-	// )
 
 	return err
 }
