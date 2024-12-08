@@ -3,7 +3,7 @@ package metric
 import (
 	"testing"
 
-	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/domain"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +21,7 @@ func TestGaugeEncode(t *testing.T) {
 			fields: fields{
 				str: "t1",
 			},
-			want: internal.ErrInvalidData,
+			want: domain.ErrInvalidData,
 		},
 		{
 			name: "encode value test",
@@ -156,7 +156,7 @@ func TestCounterEncode(t *testing.T) {
 			fields: fields{
 				str: "t1",
 			},
-			want: internal.ErrInvalidData,
+			want: domain.ErrInvalidData,
 		},
 		{
 			name: "encode value test",
@@ -205,7 +205,7 @@ func TestCounterDecode(t *testing.T) {
 				return
 			}
 			assert.Equal(t, tt.want, b)
-			assert.Equal(t, internal.MetricCounter, g.GetName())
+			assert.Equal(t, domain.MetricCounter, g.GetName())
 		})
 	}
 }

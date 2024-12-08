@@ -9,21 +9,12 @@ import (
 	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
-	"github.com/konstantin-kukharev/metrics/internal"
-	"github.com/konstantin-kukharev/metrics/pkg/metric"
+	"github.com/konstantin-kukharev/metrics/domain"
+	"github.com/konstantin-kukharev/metrics/internal/metric"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func newService() service.Metric {
-	cfg := new(settings.Config)
-	cfg.Address = internal.DefaultServerAddr
-	store := storage.NewMemStorage()
-	srv := service.NewMetric(cfg, store, &metric.Gauge{}, &metric.Counter{})
-
-	return srv
-}
 
 func Test_server_MetricAdd(t *testing.T) {
 	type want struct {
@@ -37,7 +28,9 @@ func Test_server_MetricAdd(t *testing.T) {
 		Value string
 	}
 
-	serv := newService()
+	cfg := settings.NewConfig().WithDebug()
+	store := storage.NewMemStorage()
+	serv := service.NewMetric(cfg.Log(), store, &metric.Gauge{}, &metric.Counter{})
 
 	tests := []struct {
 		name    string
@@ -47,7 +40,7 @@ func Test_server_MetricAdd(t *testing.T) {
 	}{
 		{
 			name:    "add gauge",
-			pathVal: params{Type: internal.MetricGauge, Name: "test", Value: "1234.000"},
+			pathVal: params{Type: domain.MetricGauge, Name: "test", Value: "1234.000"},
 			srv:     serv,
 			want: want{
 				code:        http.StatusOK,
@@ -57,7 +50,7 @@ func Test_server_MetricAdd(t *testing.T) {
 		},
 		{
 			name:    "add counter",
-			pathVal: params{Type: internal.MetricCounter, Name: "test", Value: "10"},
+			pathVal: params{Type: domain.MetricCounter, Name: "test", Value: "10"},
 			srv:     serv,
 			want: want{
 				code:        http.StatusOK,
@@ -67,7 +60,7 @@ func Test_server_MetricAdd(t *testing.T) {
 		},
 		{
 			name:    "add counter compare",
-			pathVal: params{Type: internal.MetricCounter, Name: "test", Value: "10"},
+			pathVal: params{Type: domain.MetricCounter, Name: "test", Value: "10"},
 			srv:     serv,
 			want: want{
 				code:        http.StatusOK,
@@ -77,7 +70,7 @@ func Test_server_MetricAdd(t *testing.T) {
 		},
 		{
 			name:    "no name",
-			pathVal: params{Type: internal.MetricGauge, Name: "", Value: "1234"},
+			pathVal: params{Type: domain.MetricGauge, Name: "", Value: "1234"},
 			srv:     serv,
 			want: want{
 				code:        http.StatusNotFound,
@@ -104,7 +97,7 @@ func Test_server_MetricAdd(t *testing.T) {
 		},
 		{
 			name:    "invalid data",
-			pathVal: params{Type: internal.MetricGauge, Name: "test1", Value: "asdsad"},
+			pathVal: params{Type: domain.MetricGauge, Name: "test1", Value: "asdsad"},
 			srv:     serv,
 			want: want{
 				code:        http.StatusBadRequest,
@@ -174,7 +167,9 @@ func Test_server_MetricGet(t *testing.T) {
 		Value string
 	}
 
-	serv := newService()
+	cfg := settings.NewConfig().WithDebug()
+	store := storage.NewMemStorage()
+	serv := service.NewMetric(cfg.Log(), store, &metric.Gauge{}, &metric.Counter{})
 
 	tests := []struct {
 		name    string
@@ -184,7 +179,7 @@ func Test_server_MetricGet(t *testing.T) {
 	}{
 		{
 			name:    "get gauge",
-			pathVal: params{Type: internal.MetricGauge, Name: "", Value: "1234"},
+			pathVal: params{Type: domain.MetricGauge, Name: "", Value: "1234"},
 			srv:     serv,
 			want: want{
 				code:        http.StatusNotFound,
@@ -249,7 +244,9 @@ func Test_server_MetricList(t *testing.T) {
 		code int
 	}
 
-	serv := newService()
+	cfg := settings.NewConfig().WithDebug()
+	store := storage.NewMemStorage()
+	serv := service.NewMetric(cfg.Log(), store, &metric.Gauge{}, &metric.Counter{})
 
 	tests := []struct {
 		name string

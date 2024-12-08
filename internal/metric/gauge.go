@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/konstantin-kukharev/metrics/domain"
 	"github.com/konstantin-kukharev/metrics/internal"
 )
 
@@ -12,13 +13,13 @@ import (
 type Gauge struct{}
 
 func (g *Gauge) GetName() string {
-	return internal.MetricGauge
+	return domain.MetricGauge
 }
 
 func (g *Gauge) Encode(v string) ([]byte, error) {
 	cv, err := strconv.ParseFloat(v, 64)
 	if err != nil {
-		return []byte{}, internal.ErrInvalidData
+		return []byte{}, domain.ErrInvalidData
 	}
 
 	bits := math.Float64bits(cv)

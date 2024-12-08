@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/konstantin-kukharev/metrics/internal"
-	"github.com/konstantin-kukharev/metrics/pkg/metric"
+	"github.com/konstantin-kukharev/metrics/internal/metric"
 )
 
 type Memory interface {

@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/konstantin-kukharev/metrics/cmd/server/service"
-	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/domain"
 )
 
 type MetricAdd struct {
@@ -35,7 +35,7 @@ func (s *MetricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.service.Set(t, n, v); err != nil {
-		if errors.Is(err, internal.ErrInvalidData) || errors.Is(err, internal.ErrWrongMetricType) {
+		if errors.Is(err, domain.ErrInvalidData) || errors.Is(err, domain.ErrWrongMetricType) {
 			w.WriteHeader(http.StatusBadRequest)
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)

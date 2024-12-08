@@ -5,24 +5,21 @@ import (
 
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
-	"github.com/konstantin-kukharev/metrics/internal"
-	"github.com/konstantin-kukharev/metrics/pkg/metric"
+	"github.com/konstantin-kukharev/metrics/domain"
+	"github.com/konstantin-kukharev/metrics/internal/metric"
 	"github.com/stretchr/testify/assert"
 )
 
-func newService() Metric {
-	cfg := &settings.Config{Address: internal.DefaultServerAddr}
-	store := storage.NewMemStorage()
-	return NewMetric(cfg, store, &metric.Gauge{}, &metric.Counter{})
-}
-
 func TestMetricServiceSet(t *testing.T) {
-
 	type fields struct {
 		t     string
 		key   string
 		value string
 	}
+
+	cfg := settings.NewConfig().WithDebug()
+	store := storage.NewMemStorage()
+	srv := NewMetric(cfg.Log(), store, &metric.Gauge{}, &metric.Counter{})
 
 	tests := []struct {
 		name   string
@@ -33,22 +30,22 @@ func TestMetricServiceSet(t *testing.T) {
 		{
 			name: "set test 1",
 			fields: fields{
-				t:     internal.MetricCounter,
+				t:     domain.MetricCounter,
 				key:   "test",
 				value: "33",
 			},
-			srv:  newService(),
+			srv:  srv,
 			want: nil,
 		},
 		{
 			name: "set test 2",
 			fields: fields{
-				t:     internal.MetricCounter,
+				t:     domain.MetricCounter,
 				key:   "",
 				value: "33",
 			},
-			srv:  newService(),
-			want: internal.ErrWrongMetricName,
+			srv:  srv,
+			want: domain.ErrWrongMetricName,
 		},
 		{
 			name: "set test 3",
@@ -57,37 +54,37 @@ func TestMetricServiceSet(t *testing.T) {
 				key:   "asd",
 				value: "33",
 			},
-			srv:  newService(),
-			want: internal.ErrWrongMetricType,
+			srv:  srv,
+			want: domain.ErrWrongMetricType,
 		},
 		{
 			name: "set test 3",
 			fields: fields{
-				t:     internal.MetricCounter,
+				t:     domain.MetricCounter,
 				key:   "asd",
 				value: "asdasdas",
 			},
-			srv:  newService(),
-			want: internal.ErrInvalidData,
+			srv:  srv,
+			want: domain.ErrInvalidData,
 		},
 		{
 			name: "set test 4",
 			fields: fields{
-				t:     internal.MetricCounter,
+				t:     domain.MetricCounter,
 				key:   "asd",
 				value: "11",
 			},
-			srv:  newService(),
+			srv:  srv,
 			want: nil,
 		},
 		{
 			name: "set test 5",
 			fields: fields{
-				t:     internal.MetricCounter,
+				t:     domain.MetricCounter,
 				key:   "asd",
 				value: "11",
 			},
-			srv:  newService(),
+			srv:  srv,
 			want: nil,
 		},
 	}
@@ -106,9 +103,12 @@ func TestMetricServiceSet(t *testing.T) {
 }
 
 func TestMetricServiceGet(t *testing.T) {
-	ns := newService()
-	err := ns.Set(
-		internal.MetricCounter,
+	cfg := settings.NewConfig().WithDebug()
+	ns := storage.NewMemStorage()
+	srv := NewMetric(cfg.Log(), ns, &metric.Gauge{}, &metric.Counter{})
+
+	err := srv.Set(
+		domain.MetricCounter,
 		"addTest",
 		"33",
 	)
@@ -136,19 +136,19 @@ func TestMetricServiceGet(t *testing.T) {
 		{
 			name: "get test 1",
 			fields: fields{
-				t:   internal.MetricCounter,
+				t:   domain.MetricCounter,
 				key: "test999999",
 			},
-			srv:  ns,
+			srv:  srv,
 			want: want{[]byte{}, false},
 		},
 		{
 			name: "get test 2",
 			fields: fields{
-				t:   internal.MetricCounter,
+				t:   domain.MetricCounter,
 				key: "addTest",
 			},
-			srv:  ns,
+			srv:  srv,
 			want: want{[]byte("33"), true},
 		},
 	}

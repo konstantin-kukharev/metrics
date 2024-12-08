@@ -3,8 +3,9 @@ package service
 import (
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
+	"github.com/konstantin-kukharev/metrics/domain"
 	"github.com/konstantin-kukharev/metrics/internal"
-	"github.com/konstantin-kukharev/metrics/pkg/metric"
+	"github.com/konstantin-kukharev/metrics/internal/metric"
 )
 
 type Metric interface {
@@ -14,7 +15,7 @@ type Metric interface {
 }
 
 type MetricService struct {
-	cfg      settings.Settings
+	log      settings.Logger
 	storage  storage.Store
 	metric   map[string]metric.Type
 	cacheKey string
@@ -45,23 +46,23 @@ func (s *MetricService) Get(t, k string) ([]byte, bool) {
 func (s *MetricService) Set(t, k string, v string) error {
 	//валидация параметров
 	if k == "" {
-		return internal.ErrWrongMetricName
+		return domain.ErrWrongMetricName
 	}
 
 	if _, ok := s.metric[t]; t == "" || !ok {
-		return internal.ErrWrongMetricType
+		return domain.ErrWrongMetricType
 	}
 
 	val, err := s.metric[t].Encode(v)
 	if err != nil {
-		return internal.ErrInvalidData
+		return domain.ErrInvalidData
 	}
 
 	valStore, ok := s.storage.Get(s.metric[t], k)
 	if !ok {
 		resp, err := s.metric[t].Decode(val)
 		if err != nil {
-			return internal.ErrInvalidData
+			return domain.ErrInvalidData
 		}
 
 		return s.storage.Set(s.metric[t], k, resp)
@@ -69,25 +70,25 @@ func (s *MetricService) Set(t, k string, v string) error {
 
 	val1, err := s.metric[t].Encode(valStore)
 	if err != nil {
-		return internal.ErrInvalidData
+		return domain.ErrInvalidData
 	}
 
 	val2, err := s.metric[t].Aggregate(val, val1)
 	if err != nil {
-		return internal.ErrInvalidData
+		return domain.ErrInvalidData
 	}
 
 	resultVal, err := s.metric[t].Decode(val2)
 	if err != nil {
-		return internal.ErrInvalidData
+		return domain.ErrInvalidData
 	}
 
 	return s.storage.Set(s.metric[t], k, resultVal)
 }
 
-func NewMetric(cfg settings.Settings, s storage.Store, m ...metric.Type) *MetricService {
+func NewMetric(log settings.Logger, s storage.Store, m ...metric.Type) *MetricService {
 	srv := &MetricService{
-		cfg:     cfg,
+		log:     log,
 		storage: s,
 		metric:  map[string]metric.Type{},
 	}

@@ -10,7 +10,7 @@ import (
 )
 
 type StateService struct {
-	cfg        settings.Settings
+	app        settings.Application
 	nextPool   time.Time
 	nextReport time.Time
 	m          state.Memory
@@ -23,24 +23,24 @@ func (s *StateService) Run() error {
 		if s.nextPool.Before(cTime) || s.nextPool.Equal(cTime) {
 			var mem runtime.MemStats
 			s.m.Update(&mem)
-			s.nextPool = cTime.Add(s.cfg.GetPoolInterval())
+			s.nextPool = cTime.Add(s.app.GetPoolInterval())
 		}
 		if s.nextReport.Before(cTime) || s.nextReport.Equal(cTime) {
-			err := s.r.Report(s.cfg.GetServerAddress(), s.m.Data())
+			err := s.r.Report(s.app.GetServerAddress(), s.m.Data())
 			if err != nil {
 				return err
 			}
-			s.nextReport = cTime.Add(s.cfg.GetReportInterval())
+			s.nextReport = cTime.Add(s.app.GetReportInterval())
 		}
 	}
 }
 
 func NewState(
-	cfg settings.Settings,
+	app settings.Application,
 	m state.Memory,
 	r report.AgentReporter) *StateService {
 	return &StateService{
-		cfg:        cfg,
+		app:        app,
 		nextPool:   time.Now(),
 		nextReport: time.Now(),
 		m:          m,

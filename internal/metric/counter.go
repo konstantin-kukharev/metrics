@@ -4,20 +4,20 @@ import (
 	"encoding/binary"
 	"strconv"
 
-	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/domain"
 )
 
 // Counter Тип int64
 type Counter struct{}
 
 func (c *Counter) GetName() string {
-	return internal.MetricCounter
+	return domain.MetricCounter
 }
 
 func (c *Counter) Encode(v string) ([]byte, error) {
 	iv, err := strconv.ParseInt(v, 10, 64)
 	if err != nil {
-		return []byte{}, internal.ErrInvalidData
+		return []byte{}, domain.ErrInvalidData
 	}
 
 	bv := make([]byte, 8)

@@ -3,7 +3,7 @@ package storage
 import (
 	"sync"
 
-	"github.com/konstantin-kukharev/metrics/pkg/metric"
+	"github.com/konstantin-kukharev/metrics/internal/metric"
 )
 
 type Store interface {

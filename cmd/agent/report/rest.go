@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/konstantin-kukharev/metrics/pkg/metric"
+	"github.com/konstantin-kukharev/metrics/internal/metric"
 )
 
 type AgentReporter interface {

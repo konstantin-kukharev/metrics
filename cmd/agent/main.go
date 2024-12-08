@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -14,22 +12,22 @@ import (
 )
 
 func main() {
-	conf := settings.New()
+	app := settings.New().WithFlag().WithEnv().WithDebug()
 	c := &http.Client{}
 	s := state.NewMemory()
 	r := report.NewRest(c)
-	srv := service.NewState(conf, s, r)
+	srv := service.NewState(app, s, r)
 
 	time.Sleep(internal.DefaultPoolInterval * time.Second)
 
 	if err := srv.Run(); err != nil {
-		fmt.Printf(
-			"runninig agent\r\nreport on %s\r\nreport interval: %s sec.\r\npool interval: %s sec.\r\n",
-			conf.GetServerAddress(),
-			conf.GetReportInterval(),
-			conf.GetPoolInterval(),
+		app.Log().Error(
+			"runninig agent report",
+			"address", app.GetServerAddress(),
+			"report interval", app.GetReportInterval(),
+			"pool interval", app.GetPoolInterval(),
 		)
 
-		log.Fatal(err)
+		app.Log().Error("error occured", "message", err.Error())
 	}
 }

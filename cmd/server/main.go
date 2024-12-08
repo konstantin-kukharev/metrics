@@ -1,35 +1,33 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net/http"
-
-	"log"
 
 	"github.com/konstantin-kukharev/metrics/cmd/server/handler"
 	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
-	"github.com/konstantin-kukharev/metrics/pkg/metric"
+	"github.com/konstantin-kukharev/metrics/internal/metric"
 
 	"github.com/go-chi/chi/v5"
 )
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatal(err)
+	conf := settings.NewConfig().WithFlag().WithEnv().WithDebug()
+
+	if err := run(conf); err != nil {
+		conf.Log().Error("error occured", "error", err)
 	}
 }
 
 /*
 run
 */
-func run() error {
-	conf := settings.New()
-	flag.Parse()
+func run(app settings.Application) error {
+
 	store := storage.NewMemStorage()
-	serv := service.NewMetric(conf, store, &metric.Gauge{}, &metric.Counter{})
+	serv := service.NewMetric(app.Log(), store, &metric.Gauge{}, &metric.Counter{})
 
 	r := chi.NewRouter()
 	r.Method("POST", "/update/{type}/{name}/{val}", handler.NewAddMetric(serv))
@@ -38,10 +36,10 @@ func run() error {
 
 	fmt.Printf(
 		"runninig server on \"%s\"\r\n",
-		conf.GetAddress(),
+		app.GetAddress(),
 	)
 
-	err := http.ListenAndServe(conf.GetAddress(), r)
+	err := http.ListenAndServe(app.GetAddress(), r)
 
 	return err
 }
