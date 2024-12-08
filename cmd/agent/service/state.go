@@ -9,7 +9,7 @@ import (
 	"github.com/konstantin-kukharev/metrics/cmd/agent/state"
 )
 
-type stateService struct {
+type StateService struct {
 	cfg        settings.Settings
 	nextPool   time.Time
 	nextReport time.Time
@@ -17,7 +17,7 @@ type stateService struct {
 	r          report.AgentReporter
 }
 
-func (s *stateService) Run() error {
+func (s *StateService) Run() error {
 	for {
 		cTime := time.Now()
 		if s.nextPool.Before(cTime) || s.nextPool.Equal(cTime) {
@@ -38,8 +38,8 @@ func (s *stateService) Run() error {
 func NewState(
 	cfg settings.Settings,
 	m state.Memory,
-	r report.AgentReporter) *stateService {
-	return &stateService{
+	r report.AgentReporter) *StateService {
+	return &StateService{
 		cfg:        cfg,
 		nextPool:   time.Now(),
 		nextReport: time.Now(),

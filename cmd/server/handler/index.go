@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 
 	"github.com/konstantin-kukharev/metrics/cmd/server/service"
@@ -12,20 +13,14 @@ type metricIndex struct {
 }
 
 func (s *metricIndex) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/html")
-	body := "<ul>"
-	for _, d := range s.service.List() {
-		val, err := d.GetValue()
-		if err != nil {
-			body += fmt.Sprintf("<li>%s\t%s\t%s</li>", d.Type(), d.Name(), err.Error())
-			continue
-		}
-		body += fmt.Sprintf("<li>%s\t%s\t%s</li>", d.Type(), d.Name(), val)
+	//w.Header().Add("Content-Type", "text/html")
+	Data := s.service.List()
+	tmpl, err := template.ParseFiles("template/index.html")
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		tmpl.Execute(w, Data)
 	}
-
-	body += "</ul>"
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(body))
 }
 
 func NewIndexMetric(srv service.Metric) *metricIndex {

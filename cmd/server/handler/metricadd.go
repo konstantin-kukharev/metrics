@@ -8,7 +8,7 @@ import (
 	"github.com/konstantin-kukharev/metrics/internal"
 )
 
-type metricAdd struct {
+type MetricAdd struct {
 	service service.Metric
 }
 
@@ -21,7 +21,7 @@ type metricAdd struct {
 // - При попытке передать запрос с некорректным типом метрики или значением возвращать http.StatusBadRequest
 //
 // - Редиректы не поддерживаются.
-func (s *metricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *MetricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
 	t := r.PathValue("type")
@@ -45,7 +45,7 @@ func (s *metricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func NewAddMetric(srv service.Metric) *metricAdd {
-	serv := &metricAdd{service: srv}
+func NewAddMetric(srv service.Metric) *MetricAdd {
+	serv := &MetricAdd{service: srv}
 	return serv
 }

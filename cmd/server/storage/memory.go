@@ -6,17 +6,23 @@ import (
 	"github.com/konstantin-kukharev/metrics/pkg/metric"
 )
 
+type Store interface {
+	List() []metric.Value
+	Get(t metric.Type, k string) (string, bool)
+	Set(t metric.Type, k string, v string) error
+}
+
 type key struct {
 	c metric.Type
 	n string
 }
 
-type memStorage struct {
+type MemStorage struct {
 	mx      *sync.RWMutex
 	storage map[key]string
 }
 
-func (s *memStorage) List() []metric.Value {
+func (s *MemStorage) List() []metric.Value {
 	res := make([]metric.Value, 0, len(s.storage))
 	for k, v := range s.storage {
 		val, err := metric.NewValue(k.c, k.n, v)
@@ -30,7 +36,7 @@ func (s *memStorage) List() []metric.Value {
 	return res
 }
 
-func (s *memStorage) Get(t metric.Type, k string) (string, bool) {
+func (s *MemStorage) Get(t metric.Type, k string) (string, bool) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
 
@@ -38,7 +44,7 @@ func (s *memStorage) Get(t metric.Type, k string) (string, bool) {
 	return v, ok
 }
 
-func (s *memStorage) Set(t metric.Type, k string, v string) error {
+func (s *MemStorage) Set(t metric.Type, k string, v string) error {
 	s.mx.Lock()
 	defer s.mx.Unlock()
 
@@ -46,8 +52,8 @@ func (s *memStorage) Set(t metric.Type, k string, v string) error {
 	return nil
 }
 
-func NewMemStorage() *memStorage {
-	return &memStorage{
+func NewMemStorage() *MemStorage {
+	return &MemStorage{
 		mx:      &sync.RWMutex{},
 		storage: map[key]string{},
 	}

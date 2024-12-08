@@ -7,7 +7,13 @@ import (
 	"github.com/konstantin-kukharev/metrics/pkg/metric"
 )
 
-type mSrv struct {
+type Metric interface {
+	List() []metric.Value
+	Get(t, k string) ([]byte, bool)
+	Set(t, k string, v string) error
+}
+
+type MetricService struct {
 	cfg      settings.Settings
 	storage  storage.Store
 	metric   map[string]metric.Type
@@ -15,7 +21,7 @@ type mSrv struct {
 	cache    []metric.Value
 }
 
-func (s *mSrv) List() []metric.Value {
+func (s *MetricService) List() []metric.Value {
 	val, ok := s.storage.Get(&metric.Counter{}, internal.CacheKey)
 	if ok && s.cacheKey != val {
 		s.cache = s.storage.List()
@@ -24,7 +30,7 @@ func (s *mSrv) List() []metric.Value {
 	return s.cache
 }
 
-func (s *mSrv) Get(t, k string) ([]byte, bool) {
+func (s *MetricService) Get(t, k string) ([]byte, bool) {
 	if _, ok := s.metric[t]; !ok {
 		return []byte{}, ok
 	}
@@ -36,7 +42,7 @@ func (s *mSrv) Get(t, k string) ([]byte, bool) {
 	return []byte(val), true
 }
 
-func (s *mSrv) Set(t, k string, v string) error {
+func (s *MetricService) Set(t, k string, v string) error {
 	//валидация параметров
 	if k == "" {
 		return internal.ErrWrongMetricName
@@ -79,8 +85,8 @@ func (s *mSrv) Set(t, k string, v string) error {
 	return s.storage.Set(s.metric[t], k, resultVal)
 }
 
-func NewMetric(cfg settings.Settings, s storage.Store, m ...metric.Type) *mSrv {
-	srv := &mSrv{
+func NewMetric(cfg settings.Settings, s storage.Store, m ...metric.Type) *MetricService {
+	srv := &MetricService{
 		cfg:     cfg,
 		storage: s,
 		metric:  map[string]metric.Type{},

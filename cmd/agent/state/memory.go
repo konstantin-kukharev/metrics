@@ -10,21 +10,26 @@ import (
 	"github.com/konstantin-kukharev/metrics/pkg/metric"
 )
 
-type memory struct {
+type Memory interface {
+	Update(m *runtime.MemStats)
+	Data() []metric.Value
+}
+
+type MemoryState struct {
 	mx      *sync.RWMutex
 	gauge   map[string]float64
 	counter map[string]int64
 }
 
-func NewMemory() *memory {
-	return &memory{
+func NewMemory() *MemoryState {
+	return &MemoryState{
 		mx:      &sync.RWMutex{},
 		gauge:   map[string]float64{},
 		counter: map[string]int64{"PollCount": 0},
 	}
 }
 
-func (d *memory) Update(m *runtime.MemStats) {
+func (d *MemoryState) Update(m *runtime.MemStats) {
 	runtime.ReadMemStats(m)
 	d.mx.Lock()
 	defer d.mx.Unlock()
@@ -63,7 +68,7 @@ func (d *memory) Update(m *runtime.MemStats) {
 	d.counter["PollCount"] = d.counter["PollCount"] + 1
 }
 
-func (d *memory) Data() []metric.Value {
+func (d *MemoryState) Data() []metric.Value {
 	l := len(d.counter) + len(d.gauge)
 	res := make([]metric.Value, 0, l)
 	d.mx.RLock()

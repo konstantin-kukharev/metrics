@@ -23,6 +23,7 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+__debug*
 
 # workdir
 .runtime

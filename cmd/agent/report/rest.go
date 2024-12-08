@@ -7,11 +7,14 @@ import (
 	"github.com/konstantin-kukharev/metrics/pkg/metric"
 )
 
-type rest struct {
+type AgentReporter interface {
+	Report(serverAddress string, data []metric.Value) error
+}
+type Rest struct {
 	cli *http.Client
 }
 
-func (r *rest) Report(server string, d []metric.Value) error {
+func (r *Rest) Report(server string, d []metric.Value) error {
 	var errs error
 	for _, v := range d {
 		val, err := v.GetValue()
@@ -31,6 +34,9 @@ func (r *rest) Report(server string, d []metric.Value) error {
 	return errs
 }
 
-func NewRest(cli *http.Client) *rest {
-	return &rest{cli: cli}
+func NewRest(cli *http.Client) *Rest {
+	r := new(Rest)
+	r.cli = cli
+
+	return r
 }
