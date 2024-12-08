@@ -6,11 +6,11 @@ import (
 	"github.com/konstantin-kukharev/metrics/cmd/server/service"
 )
 
-type metricGet struct {
+type MetricGet struct {
 	service service.Metric
 }
 
-func (s *metricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *MetricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
 	t := r.PathValue("type")
@@ -30,7 +30,7 @@ func (s *metricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 }
 
-func NewGetMetric(srv service.Metric) *metricGet {
-	serv := &metricGet{service: srv}
+func NewGetMetric(srv service.Metric) *MetricGet {
+	serv := &MetricGet{service: srv}
 	return serv
 }

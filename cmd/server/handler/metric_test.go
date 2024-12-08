@@ -16,16 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var srv service.Metric
-
 func newService() service.Metric {
-	if srv != nil {
-		return srv
-	}
-
-	cfg := settings.New()
+	cfg := new(settings.Config)
+	cfg.Address = internal.DefaultServerAddr
 	store := storage.NewMemStorage()
-	srv = service.NewMetric(cfg, store, &metric.Gauge{}, &metric.Counter{})
+	srv := service.NewMetric(cfg, store, &metric.Gauge{}, &metric.Counter{})
 
 	return srv
 }
