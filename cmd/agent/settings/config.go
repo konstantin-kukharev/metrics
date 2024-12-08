@@ -73,37 +73,37 @@ func (c *Config) Log() Logger {
 	return c.log
 }
 
-func (s *Config) WithFlag() *Config {
-	flag.StringVar(&s.Address, "a", internal.DefaultServerAddr, "server address")
-	flag.IntVar(&s.ReportInterval, "r", 10, "report interval time duration")
-	flag.IntVar(&s.PoolInterval, "p", 2, "pool interval time duration")
+func (c *Config) WithFlag() *Config {
+	flag.StringVar(&c.Address, "a", internal.DefaultServerAddr, "server address")
+	flag.IntVar(&c.ReportInterval, "r", 10, "report interval time duration")
+	flag.IntVar(&c.PoolInterval, "p", 2, "pool interval time duration")
 
 	flag.Parse()
 
-	return s
+	return c
 }
 
 // ADDRESS отвечает за адрес эндпоинта HTTP-сервера.
 // REPORT_INTERVAL позволяет переопределять reportInterval.
 // POLL_INTERVAL позволяет переопределять pollInterval.
-func (s *Config) WithEnv() *Config {
+func (c *Config) WithEnv() *Config {
 	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
-		s.Address = envRunAddr
+		c.Address = envRunAddr
 	}
 
 	if envReportInterval := os.Getenv("REPORT_INTERVAL"); envReportInterval != "" {
 		if val, err := strconv.Atoi(envReportInterval); err == nil {
-			s.ReportInterval = val
+			c.ReportInterval = val
 		}
 	}
 
 	if envPoolInterval := os.Getenv("POLL_INTERVAL"); envPoolInterval != "" {
 		if val, err := strconv.Atoi(envPoolInterval); err == nil {
-			s.PoolInterval = val
+			c.PoolInterval = val
 		}
 	}
 
-	return s
+	return c
 }
 
 func (c *Config) WithDebug() *Config {
