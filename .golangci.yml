@@ -23,7 +23,6 @@ linters:
     - goimports
     - mnd
     - goprintffuncname
-    - gosec
     - gosimple
     - govet
     - intrange

@@ -24,6 +24,12 @@ func NewMetric(name, mtype, value string) (*Metric, error) {
 		return m, domain.ErrWrongMetricName
 	}
 
+	if mtype == "" {
+		return m, domain.ErrWrongMetricType
+	}
+	m.ID = name
+	m.MType = mtype
+
 	switch m.MType {
 	case domain.MetricGauge:
 		cv, err := strconv.ParseFloat(value, 64)

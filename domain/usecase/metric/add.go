@@ -1,43 +1,48 @@
 package metric
 
 import (
-	"errors"
+	"context"
 
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 )
 
 type Tx interface {
-	CreateOrUpdate(func(a AddMetricProvider, g GetMetricProvider) error) error
+	UnitOfWork(context.Context, func(context.Context) error) error
 }
 
 type AddMetricProvider interface {
-	Set(m *entity.Metric) error
+	Set(m ...*entity.Metric) error
+}
+
+type UpdateMetricProvider interface {
 	Tx
+	AddMetricProvider
+	GetMetricProvider
 }
 
 type AddMetric struct {
-	addProvider AddMetricProvider
+	provider UpdateMetricProvider
 }
 
 func (am *AddMetric) Do(ms ...*entity.Metric) error {
-	return am.addProvider.CreateOrUpdate(func(a AddMetricProvider, g GetMetricProvider) error {
-		var errs error
+	return am.provider.UnitOfWork(context.TODO(), func(_ context.Context) error {
 		for _, m := range ms {
-			if res, ok := g.Get(m); ok {
+			if res, ok := am.provider.Get(m); ok {
 				res.Aggregate(m)
 			}
 
-			if err := a.Set(m); err != nil {
-				errors.Join(errs, err)
+			if err := am.provider.Set(m); err != nil {
+				return err
 			}
 		}
-		return errs
+
+		return nil
 	})
 }
 
-func NewAddMetric(a AddMetricProvider) *AddMetric {
+func NewAddMetric(a UpdateMetricProvider) *AddMetric {
 	srv := &AddMetric{
-		addProvider: a,
+		provider: a,
 	}
 
 	return srv

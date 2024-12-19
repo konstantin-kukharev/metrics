@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	ucase "github.com/konstantin-kukharev/metrics/cmd/domain/usecase/metric"
-	handler "github.com/konstantin-kukharev/metrics/cmd/internal/controller/rest/metric"
-	"github.com/konstantin-kukharev/metrics/cmd/internal/logger"
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
+	ucase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
+	handler "github.com/konstantin-kukharev/metrics/internal/controller/rest/metric"
+	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 
 	"github.com/go-chi/chi/v5"
@@ -29,7 +29,7 @@ func main() {
 	log := logger.NewSlog()
 
 	if err := run(conf, log); err != nil {
-		log.Error("error occured", "error", err)
+		log.Error("error occurred", "error", err)
 	}
 }
 
@@ -37,7 +37,6 @@ func main() {
 run
 */
 func run(app ApplicationConfig, l Logger) error {
-
 	store := memory.NewStorage(l)
 	add := ucase.NewAddMetric(store)
 	getVal := ucase.NewGetMetric(store)

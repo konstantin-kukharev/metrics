@@ -5,14 +5,14 @@ import (
 )
 
 type ListMetricProvider interface {
-	List() ([]*entity.Metric, bool)
+	List() []*entity.Metric
 }
 
 type ListMetric struct {
 	provider ListMetricProvider
 }
 
-func (am *ListMetric) Do() ([]*entity.Metric, bool) {
+func (am *ListMetric) Do() []*entity.Metric {
 	return am.provider.List()
 }
 

@@ -54,11 +54,12 @@ func (mr *RuntimeMetric) List(mem *runtime.MemStats) []*entity.Metric {
 		list = append(list, metric)
 	}
 
+	mr.counter += 1
 	cnt := &entity.Metric{
 		ID:    "PollCount",
 		MType: domain.MetricCounter,
 	}
-	*cnt.Delta += 1
+	*cnt.Delta = mr.counter
 
 	list = append(list, cnt)
 

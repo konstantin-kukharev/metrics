@@ -42,8 +42,8 @@ func New() *Config {
 
 func (c *Config) WithFlag() *Config {
 	flag.StringVar(&c.Address, "a", internal.DefaultServerAddr, "server address")
-	flag.IntVar(&c.ReportInterval, "r", 10, "report interval time duration")
-	flag.IntVar(&c.PoolInterval, "p", 2, "pool interval time duration")
+	flag.IntVar(&c.ReportInterval, "r", internal.DefaultReportInterval, "report interval time duration")
+	flag.IntVar(&c.PoolInterval, "p", internal.DefaultPoolInterval, "pool interval time duration")
 
 	flag.Parse()
 

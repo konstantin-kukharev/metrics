@@ -1,7 +1,6 @@
 package metric
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 
@@ -9,22 +8,25 @@ import (
 )
 
 type MetricListReader interface {
-	//List get all metric list
-	List() []*entity.Metric
+	// List get all metric list
+	Do() []*entity.Metric
 }
 
 type metricIndex struct {
 	service MetricListReader
 }
 
-func (s *metricIndex) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	//w.Header().Add("Content-Type", "text/html")
-	Data := s.service.List()
+func (s *metricIndex) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Add("Content-Type", "text/html")
+	Data := s.service.Do()
 	tmpl, err := template.ParseFiles("template/index.html")
 	if err != nil {
-		fmt.Println(err)
-	} else {
-		tmpl.Execute(w, Data)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	err = tmpl.Execute(w, Data)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 

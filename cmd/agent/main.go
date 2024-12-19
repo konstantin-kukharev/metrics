@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,8 +10,8 @@ import (
 	"time"
 
 	"github.com/konstantin-kukharev/metrics/cmd/agent/settings"
-	ucase "github.com/konstantin-kukharev/metrics/cmd/domain/usecase/metric"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
+	ucase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 )
@@ -32,7 +33,7 @@ func main() {
 	log := logger.NewSlog()
 
 	if err := run(app, log); err != nil {
-		log.Error("error occured", "error", err)
+		log.Error("error occurred", "error", err)
 	}
 }
 
@@ -61,7 +62,7 @@ func run(app *settings.Config, l Logger) error {
 			nextPool = cTime.Add(app.GetPoolInterval())
 		}
 		if nextReport.Before(cTime) || nextReport.Equal(cTime) {
-			err := report(cli, app.GetServerAddress(), list.Do())
+			err := report(cli, app.GetServerAddress(), list.Do()...)
 			if err != nil {
 				return err
 			}
@@ -79,7 +80,12 @@ func report(cli *http.Client, server string, d ...*entity.Metric) error {
 			continue
 		}
 		url := "http://" + server + "/update"
-		res, err := cli.Post(url, "application/json", bytes.NewBuffer(body))
+		request, err := http.NewRequestWithContext(context.TODO(), http.MethodPost, url, bytes.NewBuffer(body))
+		if err != nil {
+			return err
+		}
+		request.Header.Set("Content-Type", "application/json")
+		res, err := cli.Do(request)
 		if err != nil {
 			errs = errors.Join(errs, err)
 			continue

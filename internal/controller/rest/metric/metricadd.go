@@ -9,8 +9,8 @@ import (
 )
 
 type MetricWriter interface {
-	//Do set metric value
-	Do(*entity.Metric) error
+	// Do set metric value
+	Do(...*entity.Metric) error
 }
 
 type MetricAdd struct {
@@ -18,7 +18,9 @@ type MetricAdd struct {
 }
 
 func (s *MetricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 
 	t := r.PathValue("type")
 	n := r.PathValue("name")

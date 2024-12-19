@@ -8,7 +8,7 @@ import (
 )
 
 type MetricReader interface {
-	//Get get metric
+	// Get get metric
 	Do(m *entity.Metric) (*entity.Metric, bool)
 }
 
@@ -17,7 +17,9 @@ type MetricGet struct {
 }
 
 func (s *MetricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 
 	t := r.PathValue("type")
 	n := r.PathValue("name")
@@ -35,7 +37,11 @@ func (s *MetricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if v, ok := s.service.Do(data); ok {
 		res := internal.GetMetricValue(v)
-		w.Write([]byte(res))
+		_, err := w.Write([]byte(res))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
 		w.WriteHeader(http.StatusOK)
 	}
 

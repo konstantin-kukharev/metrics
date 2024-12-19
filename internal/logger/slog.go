@@ -27,7 +27,7 @@ func NewSlog() *Slog {
 	return l
 }
 
-func (l *Slog) WithDebug(msg string, fields ...any) {
+func (l *Slog) WithDebug() {
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}
