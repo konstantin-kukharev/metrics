@@ -4,6 +4,9 @@ test-update:
 	@git fetch template
 	@git checkout template/main .github
 
+test-cover:
+	@go test -cover ./...
+
 test1: 
 	rm -f ./.runtime/test-incr1.log
 	rm -f ./.runtime/server
@@ -31,3 +34,6 @@ test4:
 	go build -o ./.runtime/agent ./cmd/agent/*.go
 	go build -o ./.runtime/server ./cmd/server/*.go
 	@metricstest -test.v -test.run=^TestIteration4*$ -server-port=8080 -binary-path=./.runtime/server > ./.runtime/test-incr4.log 
+
+lint:
+	@golangci-lint run

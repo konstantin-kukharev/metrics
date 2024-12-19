@@ -1,15 +1,20 @@
-package handler
+package metric
 
 import (
 	"fmt"
 	"html/template"
 	"net/http"
 
-	"github.com/konstantin-kukharev/metrics/cmd/server/service"
+	"github.com/konstantin-kukharev/metrics/domain/entity"
 )
 
+type MetricListReader interface {
+	//List get all metric list
+	List() []*entity.Metric
+}
+
 type metricIndex struct {
-	service service.Metric
+	service MetricListReader
 }
 
 func (s *metricIndex) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +28,7 @@ func (s *metricIndex) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func NewIndexMetric(srv service.Metric) *metricIndex {
+func NewIndexMetric(srv MetricListReader) *metricIndex {
 	serv := &metricIndex{service: srv}
 	return serv
 }
