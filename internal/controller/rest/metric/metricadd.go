@@ -26,6 +26,10 @@ func (s *MetricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	n := r.PathValue("name")
 	v := r.PathValue("val")
 
+	if v == "" {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
 	w.Header().Add("Content-Type", "text/plain")
 
 	data, err := entity.NewMetric(n, t, v)

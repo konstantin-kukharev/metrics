@@ -14,8 +14,11 @@ type Metric struct {
 }
 
 func (m *Metric) Aggregate(m2 *Metric) {
-	*m.Delta = *m2.Delta + *m.Delta
-	*m.Value = *m2.Value
+	if m.Delta != nil {
+		*m.Delta = *m2.Delta + *m.Delta
+	} else if m.Value != nil {
+		*m.Value = *m2.Value
+	}
 }
 
 func NewMetric(name, mtype, value string) (*Metric, error) {
@@ -32,20 +35,26 @@ func NewMetric(name, mtype, value string) (*Metric, error) {
 
 	switch m.MType {
 	case domain.MetricGauge:
+		if value == "" {
+			return m, nil
+		}
 		cv, err := strconv.ParseFloat(value, 64)
 		if err == nil {
-			*m.Value = cv
+			m.Value = &cv
 			return m, nil
 		}
 		return m, domain.ErrInvalidData
 	case domain.MetricCounter:
+		if value == "" {
+			return m, nil
+		}
 		iv, err := strconv.ParseInt(value, 10, 64)
 		if err == nil {
-			*m.Delta = iv
+			m.Delta = &iv
 			return m, nil
 		}
 		return m, domain.ErrInvalidData
+	default:
+		return m, domain.ErrWrongMetricType
 	}
-
-	return m, domain.ErrWrongMetricType
 }
