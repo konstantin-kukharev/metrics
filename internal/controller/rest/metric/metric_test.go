@@ -19,7 +19,7 @@ type TestHandler struct {
 }
 
 func (h *TestHandler) Get(t, n string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodGet, "/value/"+domain.MetricGauge+"/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/value/"+domain.MetricGauge+"/test", http.NoBody)
 	req.SetPathValue("type", t)
 	req.SetPathValue("name", n)
 
@@ -30,7 +30,7 @@ func (h *TestHandler) Get(t, n string) *httptest.ResponseRecorder {
 }
 
 func (h *TestHandler) Add(t, n, v string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPost, "/update/"+domain.MetricGauge+"/test/1", nil)
+	req := httptest.NewRequest(http.MethodPost, "/update/"+domain.MetricGauge+"/test/1", http.NoBody)
 	req.SetPathValue("type", t)
 	req.SetPathValue("name", n)
 	req.SetPathValue("val", v)

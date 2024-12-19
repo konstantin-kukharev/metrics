@@ -30,34 +30,34 @@ type Updater interface {
 type CreateOrUpdate func(a Updater) error
 
 func (ms *MetricStorage) Set(es ...*entity.Metric) error {
-	//ms.mx.Lock()
+	// ms.mx.Lock()
 	for _, m := range es {
 		k := key{t: m.MType, n: m.ID}
 		ms.store[k] = m
 	}
-	//ms.mx.Unlock()
+	// ms.mx.Unlock()
 
 	return nil
 }
 
 func (ms *MetricStorage) Get(m *entity.Metric) (*entity.Metric, bool) {
 	k := key{t: m.MType, n: m.ID}
-	//ms.mx.RLock()
+	// ms.mx.RLock()
 	if v, ok := ms.store[k]; ok {
 		return v, ok
 	}
-	//ms.mx.RUnlock()
+	// ms.mx.RUnlock()
 
 	return m, false
 }
 
 func (ms *MetricStorage) List() []*entity.Metric {
 	list := make([]*entity.Metric, 0, len(ms.store))
-	//ms.mx.RLock()
+	// ms.mx.RLock()
 	for _, val := range ms.store {
 		list = append(list, val)
 	}
-	//ms.mx.RUnlock()
+	// ms.mx.RUnlock()
 
 	return list
 }
