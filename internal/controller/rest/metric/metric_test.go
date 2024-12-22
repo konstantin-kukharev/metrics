@@ -30,7 +30,7 @@ func (h *TestHandler) Get(t, n string) *httptest.ResponseRecorder {
 	return wr
 }
 
-func (h *TestHandler) List(t, n string) *httptest.ResponseRecorder {
+func (h *TestHandler) List() *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 
 	wr := httptest.NewRecorder()

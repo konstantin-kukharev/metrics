@@ -21,7 +21,7 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnsupportedMediaType)
 		resp["message"] = "Content Type is not application/json"
 		jsonResp, _ := json.Marshal(resp)
-		w.Write(jsonResp)
+		_, _ = w.Write(jsonResp)
 		return
 	}
 
@@ -40,7 +40,7 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			resp["message"] = "Bad Request. " + err.Error()
 		}
 		jsonResp, _ := json.Marshal(resp)
-		w.Write(jsonResp)
+		_, _ = w.Write(jsonResp)
 
 		return
 	}
@@ -55,7 +55,7 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		resp["message"] = "Bad Request. " + err.Error()
 		jsonResp, _ := json.Marshal(resp)
-		w.Write(jsonResp)
+		_, _ = w.Write(jsonResp)
 
 		return
 	}
@@ -73,9 +73,15 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	*result.Delta = *m.Delta
 	*result.Value = *m.Value
 
-	resultJson, _ := json.Marshal(result)
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		resp["message"] = "Bad Request. " + err.Error()
+		jsonResp, _ := json.Marshal(resp)
+		_, _ = w.Write(jsonResp)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(resultJson)
+	_, _ = w.Write(resultJSON)
 }
 
 func NewMetricGetV2(srv MetricReader) *MetricGetV2 {
