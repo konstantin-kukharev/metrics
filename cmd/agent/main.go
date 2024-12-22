@@ -12,6 +12,7 @@ import (
 	"github.com/konstantin-kukharev/metrics/cmd/agent/settings"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	ucase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
+	"github.com/konstantin-kukharev/metrics/internal"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 )
@@ -45,7 +46,7 @@ func run(app *settings.Config, l Logger) error {
 	nextPool := time.Now()
 	nextReport := time.Now()
 
-	//time.Sleep(app.GetPoolInterval() * time.Second)
+	time.Sleep(internal.DefaultPoolInterval * time.Second)
 
 	for {
 		cTime := time.Now()
@@ -85,21 +86,22 @@ func report(cli *http.Client, server string, d ...*entity.Metric) error {
 	for _, v := range d {
 		body, err := json.Marshal(v)
 		if err != nil {
-			errors.Join(errs, err)
+			errs = errors.Join(errs, err)
 			continue
 		}
 		url := "http://" + server + "/update/"
 		request, err := http.NewRequestWithContext(context.TODO(), http.MethodPost, url, bytes.NewBuffer(body))
 		if err != nil {
-			errors.Join(errs, err)
+			errs = errors.Join(errs, err)
 			continue
 		}
 		request.Header.Add("Content-Type", "application/json")
-		_, err = cli.Do(request)
+		resp, err := cli.Do(request)
 		if err != nil {
-			errors.Join(errs, err)
+			errs = errors.Join(errs, err)
 			continue
 		}
+		resp.Body.Close()
 	}
 
 	return errs
