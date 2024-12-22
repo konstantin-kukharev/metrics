@@ -14,7 +14,6 @@ type RuntimeMetric struct {
 
 func (mr *RuntimeMetric) List(mem *runtime.MemStats) []*entity.Metric {
 	list := make([]*entity.Metric, 0)
-	runtime.ReadMemStats(mem)
 
 	for name, val := range map[string]float64{
 		"Alloc":         float64(mem.Alloc),

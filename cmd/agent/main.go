@@ -52,6 +52,7 @@ func run(app *settings.Config, l Logger) error {
 		cTime := time.Now()
 		if nextPool.Before(cTime) || nextPool.Equal(cTime) {
 			var mem runtime.MemStats
+			runtime.ReadMemStats(&mem)
 			for _, stat := range state.List(&mem) {
 				err := add.Do(stat)
 				if err != nil {
