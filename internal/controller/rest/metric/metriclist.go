@@ -19,9 +19,12 @@ type metricIndex struct {
 func (s *metricIndex) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Add("Content-Type", "text/html")
 	Data := s.service.Do()
-	tmpl, err := template.ParseFiles("template/index.html")
+	tpath := "site/index.html"
+
+	tmpl, err := template.ParseFiles(tpath)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	err = tmpl.Execute(w, Data)

@@ -14,8 +14,9 @@ import (
 )
 
 type TestHandler struct {
-	get *MetricGet
-	add *MetricAdd
+	get  *MetricGet
+	add  *MetricAdd
+	list *metricIndex
 }
 
 func (h *TestHandler) Get(t, n string) *httptest.ResponseRecorder {
@@ -25,6 +26,15 @@ func (h *TestHandler) Get(t, n string) *httptest.ResponseRecorder {
 
 	wr := httptest.NewRecorder()
 	h.get.ServeHTTP(wr, req)
+
+	return wr
+}
+
+func (h *TestHandler) List(t, n string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+
+	wr := httptest.NewRecorder()
+	h.list.ServeHTTP(wr, req)
 
 	return wr
 }
@@ -47,14 +57,20 @@ func NewTestHandler() *TestHandler {
 	store := memory.NewStorage(log)
 	g := ucase.NewGetMetric(store)
 	a := ucase.NewAddMetric(store)
+	l := ucase.NewListMetric(store)
 	th.get = NewGetMetric(g)
 	th.add = NewAddMetric(a)
+	th.list = NewIndexMetric(l)
 
 	return th
 }
 
 func TestHandlerGetMetric(t *testing.T) {
 	th := NewTestHandler()
+	if res := th.Add(domain.MetricCounter, "testCounter", "none"); res.Code != http.StatusBadRequest {
+		t.Errorf("got HTTP status code %d, expected 400", res.Code)
+	}
+
 	if res := th.Add(domain.MetricGauge, "test", "1"); res.Code != http.StatusOK {
 		t.Errorf("got HTTP status code %d, expected 200", res.Code)
 	}

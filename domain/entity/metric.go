@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/konstantin-kukharev/metrics/domain"
+	"github.com/konstantin-kukharev/metrics/internal"
 )
 
 type Metric struct {
@@ -19,6 +20,17 @@ func (m *Metric) Aggregate(m2 *Metric) {
 	} else if m.Value != nil {
 		*m.Value = *m2.Value
 	}
+}
+
+func (m *Metric) GetValue() string {
+	switch m.MType {
+	case domain.MetricGauge:
+		return strconv.FormatFloat(*m.Value, 'f', internal.DefaultFloatPrecision, 64)
+	case domain.MetricCounter:
+		return strconv.FormatInt(*m.Delta, 10)
+	}
+
+	return ""
 }
 
 func NewMetric(name, mtype, value string) (*Metric, error) {

@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/konstantin-kukharev/metrics/domain/entity"
-	"github.com/konstantin-kukharev/metrics/internal"
 )
 
 type MetricReader interface {
@@ -36,7 +35,7 @@ func (s *MetricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if v, ok := s.service.Do(data); ok {
-		res := internal.GetMetricValue(v)
+		res := v.GetValue()
 		_, err := w.Write([]byte(res))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

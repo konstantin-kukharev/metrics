@@ -43,6 +43,8 @@ func (s *MetricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 		}
+
+		return
 	}
 
 	if err := s.service.Do(data); err != nil {
