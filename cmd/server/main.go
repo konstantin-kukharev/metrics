@@ -47,8 +47,8 @@ func run(app ApplicationConfig, l Logger) error {
 	r.Method("GET", "/value/{type}/{name}", WithLogging(handler.NewGetMetric(getVal), l))
 	r.Method("GET", "/", WithLogging(handler.NewIndexMetric(list), l))
 
-	r.Method("POST", "/update", WithLogging(handler.NewAddMetricV2(add), l))
-	r.Method("POST", "/value", WithLogging(handler.NewMetricGetV2(getVal), l))
+	r.Method("POST", "/update/", WithLogging(handler.NewAddMetricV2(add), l))
+	r.Method("POST", "/value/", WithLogging(handler.NewMetricGetV2(getVal), l))
 
 	fmt.Printf(
 		"runninig server on \"%s\"\r\n",
