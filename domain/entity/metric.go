@@ -25,8 +25,16 @@ func (m *Metric) Aggregate(m2 *Metric) {
 func (m *Metric) GetValue() string {
 	switch m.MType {
 	case domain.MetricGauge:
+		if m.Value == nil {
+			break
+		}
+
 		return strconv.FormatFloat(*m.Value, 'f', internal.DefaultFloatPrecision, 64)
 	case domain.MetricCounter:
+		if m.Delta == nil {
+			break
+		}
+
 		return strconv.FormatInt(*m.Delta, 10)
 	}
 
