@@ -70,9 +70,9 @@ func run(app *settings.Config, l Logger) error {
 		if nextReport.Before(cTime) || nextReport.Equal(cTime) {
 			err := reporter.Do()
 			if err != nil {
-				l.Error("error while reporting runtime metrics", err.Error())
+				l.Error("error while reporting runtime metrics", "message", err.Error())
 			} else {
-				l.Info("REPORT SUCCESS")
+				l.Info("success report")
 			}
 			nextReport = cTime.Add(app.GetReportInterval())
 		}
