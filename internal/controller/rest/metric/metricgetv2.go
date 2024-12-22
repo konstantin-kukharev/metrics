@@ -70,8 +70,13 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ID:    m.ID,
 		MType: m.MType,
 	}
-	*result.Delta = *m.Delta
-	*result.Value = *m.Value
+
+	if m.Delta != nil {
+		result.Delta = m.Delta
+	}
+	if m.Value != nil {
+		result.Value = m.Value
+	}
 
 	resultJSON, err := json.Marshal(result)
 	if err != nil {

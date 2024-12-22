@@ -1,6 +1,8 @@
 package metric
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,13 +12,16 @@ import (
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 
+	"github.com/konstantin-kukharev/metrics/domain/entity"
 	ucase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
 )
 
 type TestHandler struct {
-	get  *MetricGet
-	add  *MetricAdd
-	list *metricIndex
+	get   *MetricGet
+	getV2 *MetricGetV2
+	add   *MetricAdd
+	addV2 *MetricAddV2
+	list  *metricIndex
 }
 
 func (h *TestHandler) Get(t, n string) *httptest.ResponseRecorder {
@@ -26,6 +31,20 @@ func (h *TestHandler) Get(t, n string) *httptest.ResponseRecorder {
 
 	wr := httptest.NewRecorder()
 	h.get.ServeHTTP(wr, req)
+
+	return wr
+}
+
+func (h *TestHandler) GetV2(t, n string) *httptest.ResponseRecorder {
+	r1, _ := entity.NewMetric(n, t, "")
+	data, _ := json.Marshal(r1)
+	b := bytes.NewBuffer(data)
+
+	req := httptest.NewRequest(http.MethodPost, "/value", b)
+	req.Header.Add("Content-Type", "application/json")
+
+	wr := httptest.NewRecorder()
+	h.getV2.ServeHTTP(wr, req)
 
 	return wr
 }
@@ -59,7 +78,9 @@ func NewTestHandler() *TestHandler {
 	a := ucase.NewAddMetric(store)
 	l := ucase.NewListMetric(store)
 	th.get = NewGetMetric(g)
+	th.getV2 = NewMetricGetV2(g)
 	th.add = NewAddMetric(a)
+	th.addV2 = NewAddMetricV2(a)
 	th.list = NewIndexMetric(l)
 
 	return th
@@ -112,5 +133,10 @@ func TestHandlerGetMetric(t *testing.T) {
 			`response body "%s" does not equal "2"`,
 			r.Body.String(),
 		)
+	}
+
+	r = th.GetV2(domain.MetricGauge, "test")
+	if r.Code != http.StatusOK {
+		t.Errorf("got HTTP status code %d, expected 200", r.Code)
 	}
 }
