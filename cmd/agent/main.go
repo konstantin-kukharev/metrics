@@ -11,6 +11,7 @@ import (
 	"github.com/konstantin-kukharev/metrics/cmd/agent/settings"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	ucase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
+	"github.com/konstantin-kukharev/metrics/internal"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 )
@@ -45,16 +46,21 @@ func run(app *settings.Config, l Logger) error {
 	nextReport := time.Now()
 	cli := &http.Client{}
 
+	time.Sleep(internal.DefaultPoolInterval * time.Second)
+
 	for {
 		cTime := time.Now()
 		if nextPool.Before(cTime) || nextPool.Equal(cTime) {
 			var mem runtime.MemStats
-			if err := add.Do(state.List(&mem)...); err != nil {
-				l.Error("error while updating runtime metrics",
-					"msg", err.Error(),
-				)
+			for _, stat := range state.List(&mem) {
+				err := add.Do(stat)
+				if err != nil {
+					l.Error("error while updating runtime metrics",
+						"msg", err.Error(),
+					)
 
-				return err
+					return err
+				}
 			}
 			nextPool = cTime.Add(app.GetPoolInterval())
 		}
