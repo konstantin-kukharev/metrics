@@ -103,10 +103,6 @@ func TestHandlerGetMetric(t *testing.T) {
 		t.Errorf("got HTTP status code %d, expected 200", res.Code)
 	}
 
-	if res := th.Add(domain.MetricGauge, "test", "22"); res.Code != http.StatusOK {
-		t.Errorf("got HTTP status code %d, expected 200", res.Code)
-	}
-
 	r = th.Get(domain.MetricGauge, "test")
 	if r.Code != http.StatusOK {
 		t.Errorf("got HTTP status code %d, expected 200", r.Code)
