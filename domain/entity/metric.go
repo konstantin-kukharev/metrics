@@ -15,10 +15,8 @@ type Metric struct {
 }
 
 func (m *Metric) Aggregate(m2 *Metric) {
-	if m.Delta != nil {
-		*m.Delta = *m2.Delta + *m.Delta
-	} else if m.Value != nil {
-		*m.Value = *m2.Value
+	if m.Delta != nil && m2.Delta != nil {
+		*m.Delta += *m2.Delta
 	}
 }
 
