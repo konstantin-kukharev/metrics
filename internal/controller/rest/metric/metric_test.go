@@ -58,6 +58,20 @@ func (h *TestHandler) List() *httptest.ResponseRecorder {
 	return wr
 }
 
+func (h *TestHandler) AddV2(t, n, v string) *httptest.ResponseRecorder {
+	r1, _ := entity.NewMetric(n, t, v)
+	data, _ := json.Marshal(r1)
+	b := bytes.NewBuffer(data)
+
+	req := httptest.NewRequest(http.MethodPost, "/update", b)
+	req.Header.Add("Content-Type", "application/json")
+
+	wr := httptest.NewRecorder()
+	h.addV2.ServeHTTP(wr, req)
+
+	return wr
+}
+
 func (h *TestHandler) Add(t, n, v string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, "/update/"+domain.MetricGauge+"/test/1", http.NoBody)
 	req.SetPathValue("type", t)
@@ -133,6 +147,16 @@ func TestHandlerGetMetric(t *testing.T) {
 			`response body "%s" does not equal "2"`,
 			r.Body.String(),
 		)
+	}
+
+	r = th.GetV2(domain.MetricGauge, "test")
+	if r.Code != http.StatusOK {
+		t.Errorf("got HTTP status code %d, expected 200", r.Code)
+	}
+
+	r = th.AddV2(domain.MetricGauge, "test", "3")
+	if r.Code != http.StatusOK {
+		t.Errorf("got HTTP status code %d, expected 200", r.Code)
 	}
 
 	r = th.GetV2(domain.MetricGauge, "test")
