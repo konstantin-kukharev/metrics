@@ -85,6 +85,7 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(jsonResp)
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(resultJSON)
 }

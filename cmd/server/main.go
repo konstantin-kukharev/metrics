@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -50,10 +49,7 @@ func run(app ApplicationConfig, l Logger) error {
 	r.Method("POST", "/update/", WithLogging(handler.NewAddMetricV2(add), l))
 	r.Method("POST", "/value/", WithLogging(handler.NewMetricGetV2(getVal), l))
 
-	fmt.Printf(
-		"runninig server on \"%s\"\r\n",
-		app.GetAddress(),
-	)
+	l.Info("server on", "address", app.GetAddress())
 
 	err := http.ListenAndServe(app.GetAddress(), r)
 
@@ -69,7 +65,7 @@ func WithLogging(h http.Handler, l Logger) http.Handler {
 		h.ServeHTTP(w, r)
 
 		duration := time.Since(start)
-		l.Debug("new request",
+		l.Info("new request",
 			"uri", uri,
 			"method", method,
 			"duration", duration,

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"runtime"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/konstantin-kukharev/metrics/cmd/agent/settings"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	ucase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
-	"github.com/konstantin-kukharev/metrics/internal"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 )
@@ -44,31 +44,36 @@ func run(app *settings.Config, l Logger) error {
 	list := ucase.NewListMetric(store)
 	nextPool := time.Now()
 	nextReport := time.Now()
-	cli := &http.Client{}
 
-	time.Sleep(internal.DefaultPoolInterval * time.Second)
+	//time.Sleep(app.GetPoolInterval() * time.Second)
 
 	for {
 		cTime := time.Now()
 		if nextPool.Before(cTime) || nextPool.Equal(cTime) {
+			l.Info("update pool",
+				"time", cTime,
+			)
 			var mem runtime.MemStats
 			runtime.ReadMemStats(&mem)
-			for _, stat := range state.List(&mem) {
-				err := add.Do(stat)
-				if err != nil {
-					l.Error("error while updating runtime metrics",
-						"msg", err.Error(),
-					)
 
-					return err
-				}
+			err := add.Do(state.List(&mem)...)
+			if err != nil {
+				l.Info("error while updating runtime metrics",
+					"msg", err.Error(),
+				)
+
+				return err
 			}
 			nextPool = cTime.Add(app.GetPoolInterval())
 		}
 		if nextReport.Before(cTime) || nextReport.Equal(cTime) {
-			err := report(cli, app.GetServerAddress(), list.Do()...)
+			cli := &http.Client{}
+			r := list.Do()
+			err := report(cli, app.GetServerAddress(), r...)
 			if err != nil {
-				return err
+				l.Error("error while reporting runtime metrics", err.Error())
+			} else {
+				l.Info("REPORT SUCCESS")
 			}
 			nextReport = cTime.Add(app.GetReportInterval())
 		}
@@ -76,23 +81,26 @@ func run(app *settings.Config, l Logger) error {
 }
 
 func report(cli *http.Client, server string, d ...*entity.Metric) error {
+	var errs error
 	for _, v := range d {
 		body, err := json.Marshal(v)
 		if err != nil {
-			return err
+			errors.Join(errs, err)
+			continue
 		}
-		url := "http://" + server + "/update"
+		url := "http://" + server + "/update/"
 		request, err := http.NewRequestWithContext(context.TODO(), http.MethodPost, url, bytes.NewBuffer(body))
 		if err != nil {
-			return err
+			errors.Join(errs, err)
+			continue
 		}
 		request.Header.Add("Content-Type", "application/json")
-		res, err := cli.Do(request)
+		_, err = cli.Do(request)
 		if err != nil {
-			return err
+			errors.Join(errs, err)
+			continue
 		}
-		res.Body.Close()
 	}
 
-	return nil
+	return errs
 }
