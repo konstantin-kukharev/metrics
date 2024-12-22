@@ -66,9 +66,16 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, _ := json.Marshal(m)
+	result := &entity.Metric{
+		ID:    m.ID,
+		MType: m.MType,
+	}
+	*result.Delta = *m.Delta
+	*result.Value = *m.Value
+
+	resultJson, _ := json.Marshal(result)
 	w.WriteHeader(http.StatusOK)
-	w.Write(result)
+	w.Write(resultJson)
 }
 
 func NewMetricGetV2(srv MetricReader) *MetricGetV2 {

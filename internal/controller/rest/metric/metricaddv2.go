@@ -64,9 +64,16 @@ func (s *MetricAddV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	result, _ := json.Marshal(data)
+	result := &entity.Metric{
+		ID:    data.ID,
+		MType: data.MType,
+	}
+	*result.Delta = *data.Delta
+	*result.Value = *data.Value
+
+	resultJson, _ := json.Marshal(result)
 	w.WriteHeader(http.StatusOK)
-	w.Write(result)
+	w.Write(resultJson)
 }
 
 func NewAddMetricV2(srv MetricWriter) *MetricAddV2 {
