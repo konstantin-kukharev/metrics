@@ -1,19 +1,15 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"errors"
 	"net/http"
 	"runtime"
 	"time"
 
 	"github.com/konstantin-kukharev/metrics/cmd/agent/settings"
-	"github.com/konstantin-kukharev/metrics/domain/entity"
 	ucase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
 	"github.com/konstantin-kukharev/metrics/internal"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
+	httpReport "github.com/konstantin-kukharev/metrics/internal/reporter/http"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 )
 
@@ -42,7 +38,11 @@ func run(app *settings.Config, l Logger) error {
 	store := memory.NewStorage(l)
 	state := NewRuntimeMetric()
 	add := ucase.NewAddMetric(store)
-	list := ucase.NewListMetric(store)
+
+	cli := &http.Client{}
+	rp := httpReport.NewReporter(cli, "http://"+app.GetServerAddress()+"/update/")
+	reporter := ucase.NewReportMetric(store, rp)
+
 	nextPool := time.Now()
 	nextReport := time.Now()
 
@@ -68,9 +68,7 @@ func run(app *settings.Config, l Logger) error {
 			nextPool = cTime.Add(app.GetPoolInterval())
 		}
 		if nextReport.Before(cTime) || nextReport.Equal(cTime) {
-			cli := &http.Client{}
-			r := list.Do()
-			err := report(cli, app.GetServerAddress(), r...)
+			err := reporter.Do()
 			if err != nil {
 				l.Error("error while reporting runtime metrics", err.Error())
 			} else {
@@ -79,30 +77,4 @@ func run(app *settings.Config, l Logger) error {
 			nextReport = cTime.Add(app.GetReportInterval())
 		}
 	}
-}
-
-func report(cli *http.Client, server string, d ...*entity.Metric) error {
-	var errs error
-	for _, v := range d {
-		body, err := json.Marshal(v)
-		if err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		}
-		url := "http://" + server + "/update/"
-		request, err := http.NewRequestWithContext(context.TODO(), http.MethodPost, url, bytes.NewBuffer(body))
-		if err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		}
-		request.Header.Add("Content-Type", "application/json")
-		resp, err := cli.Do(request)
-		if err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		}
-		resp.Body.Close()
-	}
-
-	return errs
 }

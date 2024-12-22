@@ -47,6 +47,15 @@ func (ms *MetricStorage) GetUnsafe(m *entity.Metric) (*entity.Metric, bool) {
 	return m, false
 }
 
+func (ms *MetricStorage) ListUnsafe() []*entity.Metric {
+	list := make([]*entity.Metric, 0, len(ms.store))
+	for _, val := range ms.store {
+		list = append(list, val)
+	}
+
+	return list
+}
+
 func (ms *MetricStorage) Set(es ...*entity.Metric) error {
 	ms.mx.Lock()
 	defer ms.mx.Unlock()
@@ -62,14 +71,10 @@ func (ms *MetricStorage) Get(m *entity.Metric) (*entity.Metric, bool) {
 }
 
 func (ms *MetricStorage) List() []*entity.Metric {
-	list := make([]*entity.Metric, 0, len(ms.store))
 	ms.mx.RLock()
-	for _, val := range ms.store {
-		list = append(list, val)
-	}
-	ms.mx.RUnlock()
+	defer ms.mx.RUnlock()
 
-	return list
+	return ms.ListUnsafe()
 }
 
 func (ms *MetricStorage) UnitOfWork(ctx context.Context, payload func(context.Context) error) error {
