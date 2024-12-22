@@ -50,7 +50,7 @@ func (mr *RuntimeMetric) List(mem *runtime.MemStats) []*entity.Metric {
 			ID:    name,
 			MType: domain.MetricGauge,
 		}
-		*metric.Value = val
+		metric.Value = &val
 		list = append(list, metric)
 	}
 
@@ -59,7 +59,7 @@ func (mr *RuntimeMetric) List(mem *runtime.MemStats) []*entity.Metric {
 		ID:    "PollCount",
 		MType: domain.MetricCounter,
 	}
-	*cnt.Delta = mr.counter
+	cnt.Delta = &mr.counter
 
 	list = append(list, cnt)
 
