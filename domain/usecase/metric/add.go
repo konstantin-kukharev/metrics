@@ -29,12 +29,10 @@ func (am *AddMetric) Do(ms ...*entity.Metric) error {
 		for _, m := range ms {
 			res, ok := am.provider.Get(m)
 			if ok {
-				res.Aggregate(m)
-			} else {
-				res = m
+				m.Aggregate(res)
 			}
 
-			if err := am.provider.Set(res); err != nil {
+			if err := am.provider.Set(m); err != nil {
 				return err
 			}
 		}
