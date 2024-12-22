@@ -27,11 +27,14 @@ type AddMetric struct {
 func (am *AddMetric) Do(ms ...*entity.Metric) error {
 	return am.provider.UnitOfWork(context.TODO(), func(_ context.Context) error {
 		for _, m := range ms {
-			if res, ok := am.provider.Get(m); ok {
+			res, ok := am.provider.Get(m)
+			if ok {
 				res.Aggregate(m)
+			} else {
+				res = m
 			}
 
-			if err := am.provider.Set(m); err != nil {
+			if err := am.provider.Set(res); err != nil {
 				return err
 			}
 		}
