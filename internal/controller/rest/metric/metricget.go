@@ -1,8 +1,10 @@
 package metric
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/konstantin-kukharev/metrics/domain"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 )
 
@@ -25,13 +27,22 @@ func (s *MetricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Content-Type", "text/plain")
 
-	if n == "" || t == "" {
-		w.WriteHeader(http.StatusNotFound)
-	}
-
 	data, err := entity.NewMetric(n, t, "")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+
+		return
+	}
+
+	if err = data.Validate(); err != nil && !errors.Is(err, domain.ErrEmptyMetricValue) {
+		switch {
+		case errors.Is(err, domain.ErrWrongMetricName):
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+		}
+
+		return
 	}
 
 	if v, ok := s.service.Do(data); ok {

@@ -35,13 +35,6 @@ func (m *Metric) GetValue() string {
 
 func NewMetric(name, mtype, value string) (*Metric, error) {
 	m := new(Metric)
-	if name == "" {
-		return m, domain.ErrWrongMetricName
-	}
-
-	if mtype == "" {
-		return m, domain.ErrWrongMetricType
-	}
 	m.ID = name
 	m.MType = mtype
 
@@ -51,22 +44,43 @@ func NewMetric(name, mtype, value string) (*Metric, error) {
 			return m, nil
 		}
 		cv, err := strconv.ParseFloat(value, 64)
-		if err == nil {
-			m.Value = &cv
-			return m, nil
+		if err != nil {
+			return m, domain.ErrInvalidData
 		}
-		return m, domain.ErrInvalidData
+		m.Value = &cv
 	case domain.MetricCounter:
 		if value == "" {
 			return m, nil
 		}
 		iv, err := strconv.ParseInt(value, 10, 64)
-		if err == nil {
-			m.Delta = &iv
-			return m, nil
+		if err != nil {
+			return m, domain.ErrInvalidData
 		}
-		return m, domain.ErrInvalidData
-	default:
-		return m, domain.ErrWrongMetricType
+		m.Delta = &iv
 	}
+
+	return m, nil
+}
+
+func (m *Metric) Validate() error {
+	if m.ID == "" {
+		return domain.ErrWrongMetricName
+	}
+
+	if m.MType == "" {
+		return domain.ErrWrongMetricType
+	}
+
+	switch m.MType {
+	case domain.MetricGauge, domain.MetricCounter:
+		break
+	default:
+		return domain.ErrWrongMetricType
+	}
+
+	if m.GetValue() == "" {
+		return domain.ErrEmptyMetricValue
+	}
+
+	return nil
 }

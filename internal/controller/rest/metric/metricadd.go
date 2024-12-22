@@ -35,11 +35,15 @@ func (s *MetricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	data, err := entity.NewMetric(n, t, v)
 
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+
+		return
+	}
+
+	if err = data.Validate(); err != nil {
 		switch {
 		case errors.Is(err, domain.ErrWrongMetricName):
 			w.WriteHeader(http.StatusNotFound)
-		case errors.Is(err, domain.ErrWrongMetricType):
-			w.WriteHeader(http.StatusBadRequest)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 		}
@@ -49,6 +53,8 @@ func (s *MetricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.service.Do(data); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
