@@ -47,6 +47,8 @@ func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (resp *http.Respons
 	var buf bytes.Buffer
 	g := gzip.NewWriter(&buf)
 	b, err := io.ReadAll(req.Body)
+	defer req.Body.Close()
+
 	if err != nil {
 		return
 	}
@@ -58,7 +60,7 @@ func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (resp *http.Respons
 	}
 
 	url := req.URL.Scheme + "://" + req.URL.Host + req.URL.Path
-	r, err := http.NewRequest(req.Method, url, &buf)
+	r, err := http.NewRequestWithContext(req.Context(), req.Method, url, &buf)
 	if err != nil {
 		return nil, err
 	}
