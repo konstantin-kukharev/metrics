@@ -22,12 +22,14 @@ type ApplicationConfig interface {
 type Logger interface {
 	Info(msg string, fields ...any)
 	Debug(msg string, fields ...any)
+	Warn(msg string, fields ...any)
 	Error(msg string, fields ...any)
 }
 
 func main() {
 	app := settings.New().WithFlag().WithEnv()
 	log := logger.NewSlog()
+	log.WithDebug()
 
 	if err := run(app, log); err != nil {
 		log.Error("error occurred", "error", err)
@@ -39,7 +41,13 @@ func run(app *settings.Config, l Logger) error {
 	state := NewRuntimeMetric()
 	add := ucase.NewAddMetric(store)
 
-	cli := &http.Client{}
+	var rt http.RoundTripper
+	rt = http.DefaultTransport
+	rt = NewLoggingRoundTripper(rt, l)
+	rt = NewCompressRoundTripper(rt)
+	cli := &http.Client{
+		Transport: rt,
+	}
 	rp := httpReport.NewReporter(cli, "http://"+app.GetServerAddress()+"/update/")
 	reporter := ucase.NewReportMetric(store, rp)
 
@@ -59,7 +67,7 @@ func run(app *settings.Config, l Logger) error {
 
 			err := add.Do(state.List(&mem)...)
 			if err != nil {
-				l.Info("error while updating runtime metrics",
+				l.Error("error while updating runtime metrics",
 					"msg", err.Error(),
 				)
 
@@ -70,7 +78,7 @@ func run(app *settings.Config, l Logger) error {
 		if nextReport.Before(cTime) || nextReport.Equal(cTime) {
 			err := reporter.Do()
 			if err != nil {
-				l.Error("error while reporting runtime metrics", "message", err.Error())
+				l.Warn("error while reporting runtime metrics", "message", err.Error())
 			} else {
 				l.Info("success report")
 			}

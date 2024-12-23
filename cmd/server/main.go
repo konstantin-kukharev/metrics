@@ -1,7 +1,10 @@
 package main
 
 import (
+	"compress/gzip"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
@@ -26,6 +29,7 @@ type Logger interface {
 func main() {
 	conf := settings.NewConfig().WithFlag().WithEnv()
 	log := logger.NewSlog()
+	log.WithDebug()
 
 	if err := run(conf, log); err != nil {
 		log.Error("error occurred", "error", err)
@@ -44,10 +48,10 @@ func run(app ApplicationConfig, l Logger) error {
 	r := chi.NewRouter()
 	r.Method("POST", "/update/{type}/{name}/{val}", WithLogging(handler.NewAddMetric(add), l))
 	r.Method("GET", "/value/{type}/{name}", WithLogging(handler.NewGetMetric(getVal), l))
-	r.Method("GET", "/", WithLogging(handler.NewIndexMetric(list), l))
+	r.Method("GET", "/", WithCompressing(WithLogging(handler.NewIndexMetric(list), l)))
 
-	r.Method("POST", "/update/", WithLogging(handler.NewAddMetricV2(add), l))
-	r.Method("POST", "/value/", WithLogging(handler.NewMetricGetV2(getVal), l))
+	r.Method("POST", "/update/", WithCompressing(WithLogging(handler.NewAddMetricV2(add), l)))
+	r.Method("POST", "/value/", WithCompressing(WithLogging(handler.NewMetricGetV2(getVal), l)))
 
 	l.Info("server on", "address", app.GetAddress())
 
@@ -73,4 +77,48 @@ func WithLogging(h http.Handler, l Logger) http.Handler {
 	}
 
 	return http.HandlerFunc(logFn)
+}
+
+func WithCompressing(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		encoding := r.Header.Get("Content-Encoding")
+		if encoding == "gzip" {
+			reader, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer reader.Close()
+
+			r.Body = io.NopCloser(reader)
+		}
+
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			h.ServeHTTP(w, r)
+			return
+		}
+
+		w.Header().Set("Content-Encoding", "gzip")
+		gz, err := gzip.NewWriterLevel(w, gzip.BestCompression)
+		if err != nil {
+			h.ServeHTTP(w, r)
+			return
+		}
+		defer gz.Close()
+
+		gzrw := gzipResponseWriter{Writer: gz, ResponseWriter: w}
+
+		h.ServeHTTP(gzrw, r)
+	})
+}
+
+type gzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+// Write is necessary in order to properly implement the io.Writer interface.
+func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	n, err := w.Writer.Write(b)
+	return n, err
 }
