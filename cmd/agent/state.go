@@ -1,11 +1,11 @@
 package main
 
 import (
-	"math/rand/v2"
 	"runtime"
 
 	"github.com/konstantin-kukharev/metrics/domain"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
+	"github.com/konstantin-kukharev/metrics/internal"
 )
 
 type RuntimeMetric struct {
@@ -43,7 +43,7 @@ func (mr *RuntimeMetric) List(mem *runtime.MemStats) []*entity.Metric {
 		"StackSys":      float64(mem.StackSys),
 		"Sys":           float64(mem.Sys),
 		"TotalAlloc":    float64(mem.TotalAlloc),
-		"RandomValue":   rand.Float64(),
+		"RandomValue":   internal.RandFloat64(),
 	} {
 		metric := &entity.Metric{
 			ID:    name,

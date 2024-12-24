@@ -47,8 +47,9 @@ func NewServer(
 		config: app,
 		log:    l,
 		server: &http.Server{
-			Handler: router,
-			Addr:    app.GetAddress(),
+			Handler:           router,
+			Addr:              app.GetAddress(),
+			ReadHeaderTimeout: 1 * time.Second,
 		},
 	}
 }

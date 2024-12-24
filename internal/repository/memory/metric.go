@@ -50,7 +50,7 @@ func (ms *MetricStorage) Set(es ...*entity.Metric) {
 		if ms.backup != nil {
 			if b, err := json.Marshal(m); err == nil {
 				_, _ = ms.backup.Write(b)
-				ms.backup.WriteString("\n")
+				_, _ = ms.backup.WriteString("\n")
 			}
 		}
 	}

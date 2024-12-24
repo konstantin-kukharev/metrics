@@ -13,6 +13,7 @@ import (
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	usecase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
+	"github.com/konstantin-kukharev/metrics/internal"
 	"github.com/konstantin-kukharev/metrics/internal/graceful"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
@@ -35,7 +36,7 @@ func main() {
 	getVal := usecase.NewGetMetric(store)
 	list := usecase.NewListMetric(store)
 	if conf.GetRestore() {
-		file, err := os.OpenFile(conf.GetFileStoragePath(), os.O_RDONLY|os.O_CREATE, 0666)
+		file, err := os.OpenFile(conf.GetFileStoragePath(), os.O_RDONLY|os.O_CREATE, internal.DefaultFileStoragePermission)
 		if err != nil {
 			log.Error("open file", "error", err)
 			return
@@ -47,12 +48,12 @@ func main() {
 			if err := json.Unmarshal(data, z); err != nil {
 				continue
 			}
-			add.Do(z)
+			_ = add.Do(z)
 		}
 		file.Close()
 	}
 
-	file, err := os.OpenFile(conf.GetFileStoragePath(), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	file, err := os.OpenFile(conf.GetFileStoragePath(), os.O_WRONLY|os.O_APPEND|os.O_CREATE, internal.DefaultFileStoragePermission)
 	if err != nil {
 		log.Error("open file", "error", err)
 		return

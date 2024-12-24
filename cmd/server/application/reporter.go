@@ -31,7 +31,7 @@ func (r *Reporter) report() {
 	for _, m := range r.s.List() {
 		if b, err := json.Marshal(m); err == nil {
 			_, _ = r.f.Write(b)
-			r.f.WriteString("\n")
+			_, _ = r.f.WriteString("\n")
 		}
 	}
 }
