@@ -2,58 +2,52 @@ package settings
 
 import (
 	"flag"
-	"log/slog"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/konstantin-kukharev/metrics/internal"
 )
 
-type Application interface {
-	GetAddress() string
-	Log() Logger
-}
-
-type Logger interface {
-	Debug(msg string, fields ...any)
-	Info(msg string, fields ...any)
-	Warn(msg string, fields ...any)
-	Error(msg string, fields ...any)
-}
-
 type Config struct {
-	Address string
-	log     *slog.Logger
-	errLog  *slog.Logger
+	Address         string
+	StoreInterval   int    // интервал времени в секундах, по истечении которого текущие показания сервера сохраняются на диск
+	FileStoragePath string // путь до файла, куда сохраняются текущие значения
+	Restore         bool   // загружать или нет ранее сохранённые значения из указанного файла при старте
 }
 
 func (c *Config) GetAddress() string {
 	return c.Address
 }
 
+func (c *Config) GetStoreInterval() time.Duration {
+	return time.Duration(c.StoreInterval * int(time.Second))
+}
+
+func (c *Config) GetFileStoragePath() string {
+	return c.FileStoragePath
+}
+
+func (c *Config) GetRestore() bool {
+	return c.Restore
+}
+
 func NewConfig() *Config {
-	c := &Config{Address: internal.DefaultServerAddr}
-	// init application logger
-	errHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelError,
-	})
-
-	c.errLog = slog.New(errHandler)
-
-	logHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelWarn,
-	})
-
-	c.log = slog.New(logHandler)
+	c := &Config{
+		Address:         internal.DefaultServerAddr,
+		StoreInterval:   internal.DefaultServerStoreInterval,
+		FileStoragePath: internal.DefaultFileStoragePath,
+		Restore:         internal.DefaultRestore,
+	}
 
 	return c
 }
 
-func (c *Config) Log() Logger {
-	return c.log
-}
-
 func (c *Config) WithFlag() *Config {
 	flag.StringVar(&c.Address, "a", internal.DefaultServerAddr, "server address")
+	flag.IntVar(&c.StoreInterval, "i", internal.DefaultServerStoreInterval, "interval to store data on FS")
+	flag.StringVar(&c.FileStoragePath, "f", internal.DefaultFileStoragePath, "file path to store data")
+	flag.BoolVar(&c.Restore, "r", internal.DefaultRestore, "file path to store data")
 	flag.Parse()
 
 	return c
@@ -63,22 +57,19 @@ func (c *Config) WithEnv() *Config {
 	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
 		c.Address = envRunAddr
 	}
-
-	return c
-}
-
-func (c *Config) WithDebug() *Config {
-	opts := &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+	if envStoreInterval := os.Getenv("STORE_INTERVAL"); envStoreInterval != "" {
+		if val, err := strconv.Atoi(envStoreInterval); err != nil {
+			c.StoreInterval = val
+		}
 	}
-	handler := slog.NewTextHandler(os.Stdout, opts)
-	logger := slog.New(handler)
-
-	c.log = logger.With(
-		slog.Group("program_info",
-			slog.Int("pid", os.Getpid()),
-		),
-	)
+	if envFilePath := os.Getenv("FILE_STORAGE_PATH"); envFilePath != "" {
+		c.FileStoragePath = envFilePath
+	}
+	if envRestore := os.Getenv("RESTORE"); envRestore != "" {
+		if val, err := strconv.ParseBool(envRestore); err != nil {
+			c.Restore = val
+		}
+	}
 
 	return c
 }

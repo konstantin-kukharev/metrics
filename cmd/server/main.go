@@ -1,45 +1,82 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
+	"bufio"
+	"context"
+	"os"
+	"syscall"
+	"time"
 
-	"github.com/konstantin-kukharev/metrics/cmd/server/handler"
-	"github.com/konstantin-kukharev/metrics/cmd/server/service"
+	"encoding/json"
+
+	"github.com/konstantin-kukharev/metrics/cmd/server/application"
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
-	"github.com/konstantin-kukharev/metrics/cmd/server/storage"
-	"github.com/konstantin-kukharev/metrics/internal/metric"
-
-	"github.com/go-chi/chi/v5"
+	"github.com/konstantin-kukharev/metrics/domain/entity"
+	usecase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
+	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/internal/graceful"
+	"github.com/konstantin-kukharev/metrics/internal/logger"
+	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 )
 
-func main() {
-	conf := settings.NewConfig().WithFlag().WithEnv().WithDebug()
-
-	if err := run(conf); err != nil {
-		conf.Log().Error("error occured", "error", err)
-	}
+type Logger interface {
+	Info(msg string, fields ...any)
+	Debug(msg string, fields ...any)
+	Error(msg string, fields ...any)
 }
 
-/*
-run
-*/
-func run(app settings.Application) error {
+func main() {
+	conf := settings.NewConfig().WithFlag().WithEnv()
+	log := logger.NewSlog()
+	log.WithDebug()
+	ctx := context.WithoutCancel(context.Background())
 
-	store := storage.NewMemStorage()
-	serv := service.NewMetric(app.Log(), store, &metric.Gauge{}, &metric.Counter{})
+	store := memory.NewStorage(log)
+	add := usecase.NewAddMetric(store)
+	getVal := usecase.NewGetMetric(store)
+	list := usecase.NewListMetric(store)
+	if conf.GetRestore() {
+		file, err := os.OpenFile(conf.GetFileStoragePath(), os.O_RDONLY|os.O_CREATE, internal.DefaultFileStoragePermission)
+		if err != nil {
+			log.Error("open file", "error", err)
+			return
+		}
+		sc := bufio.NewScanner(file)
+		for sc.Scan() {
+			data := sc.Bytes()
+			z := new(entity.Metric)
+			if err := json.Unmarshal(data, z); err != nil {
+				continue
+			}
+			_ = add.Do(z)
+		}
+		file.Close()
+	}
 
-	r := chi.NewRouter()
-	r.Method("POST", "/update/{type}/{name}/{val}", handler.NewAddMetric(serv))
-	r.Method("GET", "/value/{type}/{name}", handler.NewGetMetric(serv))
-	r.Method("GET", "/", handler.NewIndexMetric(serv))
+	file, err := os.OpenFile(conf.GetFileStoragePath(), os.O_WRONLY|os.O_APPEND|os.O_CREATE, internal.DefaultFileStoragePermission)
+	if err != nil {
+		log.Error("open file", "error", err)
+		return
+	}
+	defer file.Close()
 
-	fmt.Printf(
-		"runninig server on \"%s\"\r\n",
-		app.GetAddress(),
-	)
+	if conf.GetStoreInterval() == 0 {
+		store.WithStream(file)
+	}
 
-	err := http.ListenAndServe(app.GetAddress(), r)
+	serverTask := application.NewServer(add, getVal, list, conf, log)
 
-	return err
+	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
+	gs.AddTask(serverTask)
+
+	if conf.GetStoreInterval() > 0 {
+		report := application.NewReporter(file, store, conf.GetStoreInterval())
+		gs.AddTask(report)
+	}
+
+	err = gs.Wait(syscall.SIGTERM, syscall.SIGINT)
+
+	if err != nil {
+		log.Error("error occurred", "error", err)
+	}
 }
