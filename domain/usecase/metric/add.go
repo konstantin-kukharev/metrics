@@ -11,7 +11,7 @@ type Tx interface {
 }
 
 type UnsafeAddMetricProvider interface {
-	SetUnsafe(m ...*entity.Metric) error
+	Set(m ...*entity.Metric)
 }
 
 type UnsafeGetMetricProvider interface {
@@ -31,14 +31,11 @@ type AddMetric struct {
 func (am *AddMetric) Do(ms ...*entity.Metric) error {
 	return am.provider.UnitOfWork(context.TODO(), func(_ context.Context) error {
 		for _, m := range ms {
-			res, ok := am.provider.GetUnsafe(m)
-			if ok {
+			if res, ok := am.provider.GetUnsafe(m); ok {
 				m.Aggregate(res)
 			}
 
-			if err := am.provider.SetUnsafe(m); err != nil {
-				return err
-			}
+			am.provider.Set(m)
 		}
 
 		return nil

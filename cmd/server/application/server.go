@@ -9,9 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	ucase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
-	handler "github.com/konstantin-kukharev/metrics/internal/controller/rest/metric"
-	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
+	"github.com/konstantin-kukharev/metrics/internal/handler"
 )
 
 type ApplicationConfig interface {
@@ -31,25 +29,25 @@ type Server struct {
 	server *http.Server
 }
 
-func NewServer(app ApplicationConfig, l Logger) *Server {
-	store := memory.NewStorage(l)
-	add := ucase.NewAddMetric(store)
-	getVal := ucase.NewGetMetric(store)
-	list := ucase.NewListMetric(store)
+func NewServer(
+	w handler.MetricWriter,
+	r handler.MetricReader,
+	lr handler.MetricListReader,
+	app ApplicationConfig,
+	l Logger) *Server {
+	router := chi.NewRouter()
+	router.Method("POST", "/update/{type}/{name}/{val}", WithLogging(handler.NewAddMetric(w), l))
+	router.Method("GET", "/value/{type}/{name}", WithLogging(handler.NewGetMetric(r), l))
+	router.Method("GET", "/", WithCompressing(WithLogging(handler.NewIndexMetric(lr), l)))
 
-	r := chi.NewRouter()
-	r.Method("POST", "/update/{type}/{name}/{val}", WithLogging(handler.NewAddMetric(add), l))
-	r.Method("GET", "/value/{type}/{name}", WithLogging(handler.NewGetMetric(getVal), l))
-	r.Method("GET", "/", WithCompressing(WithLogging(handler.NewIndexMetric(list), l)))
-
-	r.Method("POST", "/update/", WithCompressing(WithLogging(handler.NewAddMetricV2(add), l)))
-	r.Method("POST", "/value/", WithCompressing(WithLogging(handler.NewMetricGetV2(getVal), l)))
+	router.Method("POST", "/update/", WithCompressing(WithLogging(handler.NewAddMetricV2(w), l)))
+	router.Method("POST", "/value/", WithCompressing(WithLogging(handler.NewMetricGetV2(r), l)))
 
 	return &Server{
 		config: app,
 		log:    l,
 		server: &http.Server{
-			Handler: r,
+			Handler: router,
 			Addr:    app.GetAddress(),
 		},
 	}
@@ -57,7 +55,6 @@ func NewServer(app ApplicationConfig, l Logger) *Server {
 
 func (s *Server) Run(ctx context.Context) error {
 	go func(c context.Context) {
-		// blocks here until there's a signal
 		<-c.Done()
 
 		err := s.server.Shutdown(c)
@@ -128,7 +125,6 @@ type gzipResponseWriter struct {
 	http.ResponseWriter
 }
 
-// Write is necessary in order to properly implement the io.Writer interface.
 func (w gzipResponseWriter) Write(b []byte) (int, error) {
 	n, err := w.Writer.Write(b)
 	return n, err

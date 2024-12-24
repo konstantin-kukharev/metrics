@@ -5,3 +5,6 @@ const DefaultFloatPrecision = -1
 const DefaultServerAddr = "localhost:8080"
 const DefaultPoolInterval = 2
 const DefaultReportInterval = 10
+const DefaultServerStoreInterval = 300
+const DefaultFileStoragePath = "./backup.log"
+const DefaultRestore = true

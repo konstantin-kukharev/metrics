@@ -26,7 +26,7 @@ test9:
 	rm -f ./.runtime/server
 	go build -o ./.runtime/agent ./cmd/agent/*.go
 	go build -o ./.runtime/server ./cmd/server/*.go
-	@metricstest -test.v -test.run=^TestIteration9$\ -server-port=8080 -agent-binary-path=.runtime/agent -binary-path=.runtime/server -source-path=./ > ./.runtime/test.log
+	@metricstest -test.v -test.run=^TestIteration9$\ -file-storage-path=./BACKUP -server-port=8080 -agent-binary-path=.runtime/agent -binary-path=.runtime/server -source-path=./ > ./.runtime/test.log
 
 lint:
 	@golangci-lint run

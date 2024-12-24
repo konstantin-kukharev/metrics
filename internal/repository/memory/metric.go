@@ -2,6 +2,8 @@ package memory
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"sync"
 
 	"github.com/konstantin-kukharev/metrics/domain/entity"
@@ -17,25 +19,10 @@ type key struct {
 }
 
 type MetricStorage struct {
-	log   Logger
-	store map[key]*entity.Metric
-	mx    *sync.RWMutex
-}
-
-type Updater interface {
-	Set(es ...*entity.Metric) error
-	Get(*entity.Metric) (*entity.Metric, bool)
-}
-
-type CreateOrUpdate func(a Updater) error
-
-func (ms *MetricStorage) SetUnsafe(es ...*entity.Metric) error {
-	for _, m := range es {
-		k := key{t: m.MType, n: m.ID}
-		ms.store[k] = m
-	}
-
-	return nil
+	log    Logger
+	store  map[key]*entity.Metric
+	mx     *sync.RWMutex
+	backup *os.File
 }
 
 func (ms *MetricStorage) GetUnsafe(m *entity.Metric) (*entity.Metric, bool) {
@@ -56,11 +43,17 @@ func (ms *MetricStorage) ListUnsafe() []*entity.Metric {
 	return list
 }
 
-func (ms *MetricStorage) Set(es ...*entity.Metric) error {
-	ms.mx.Lock()
-	defer ms.mx.Unlock()
-
-	return ms.SetUnsafe(es...)
+func (ms *MetricStorage) Set(es ...*entity.Metric) {
+	for _, m := range es {
+		k := key{t: m.MType, n: m.ID}
+		ms.store[k] = m
+		if ms.backup != nil {
+			if b, err := json.Marshal(m); err == nil {
+				_, _ = ms.backup.Write(b)
+				ms.backup.WriteString("\n")
+			}
+		}
+	}
 }
 
 func (ms *MetricStorage) Get(m *entity.Metric) (*entity.Metric, bool) {
@@ -81,6 +74,10 @@ func (ms *MetricStorage) UnitOfWork(ctx context.Context, payload func(context.Co
 	ms.mx.Lock()
 	defer ms.mx.Unlock()
 	return payload(ctx)
+}
+
+func (ms *MetricStorage) WithStream(f *os.File) {
+	ms.backup = f
 }
 
 func NewStorage(l Logger) *MetricStorage {

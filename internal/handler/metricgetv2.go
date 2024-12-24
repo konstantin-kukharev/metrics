@@ -1,4 +1,4 @@
-package metric
+package handler
 
 import (
 	"encoding/json"
@@ -9,11 +9,11 @@ import (
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 )
 
-type MetricAddV2 struct {
-	service MetricWriter
+type MetricGetV2 struct {
+	service MetricReader
 }
 
-func (s *MetricAddV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	headerContentTtype := r.Header.Get("Content-Type")
 	resp := make(map[string]string)
 	if headerContentTtype != "application/json" {
@@ -45,7 +45,7 @@ func (s *MetricAddV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = data.Validate(); err != nil {
+	if err = data.Validate(); err != nil && !errors.Is(err, domain.ErrEmptyMetricValue) {
 		switch {
 		case errors.Is(err, domain.ErrWrongMetricName):
 			w.WriteHeader(http.StatusNotFound)
@@ -60,20 +60,22 @@ func (s *MetricAddV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = s.service.Do(data); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+	m, ok := s.service.Do(data)
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 
 	result := &entity.Metric{
-		ID:    data.ID,
-		MType: data.MType,
+		ID:    m.ID,
+		MType: m.MType,
 	}
 
-	if data.Delta != nil {
-		result.Delta = data.Delta
+	if m.Delta != nil {
+		result.Delta = m.Delta
 	}
-	if data.Value != nil {
-		result.Value = data.Value
+	if m.Value != nil {
+		result.Value = m.Value
 	}
 
 	resultJSON, err := json.Marshal(result)
@@ -83,11 +85,12 @@ func (s *MetricAddV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(jsonResp)
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(resultJSON)
 }
 
-func NewAddMetricV2(srv MetricWriter) *MetricAddV2 {
-	serv := &MetricAddV2{service: srv}
+func NewMetricGetV2(srv MetricReader) *MetricGetV2 {
+	serv := &MetricGetV2{service: srv}
 	return serv
 }
