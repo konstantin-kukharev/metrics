@@ -37,6 +37,7 @@ func NewGracefulShutdown(ctx context.Context, timeout time.Duration) *GracefulSh
 // AddTask добавляет задачу в GracefulShutdown
 func (gs *GracefulShutdown) AddTask(task Task) {
 	gs.wg.Add(1)
+
 	go func() {
 		defer gs.wg.Done()
 		err := task.Run(gs.ctx)

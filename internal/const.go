@@ -1,12 +1,14 @@
 package internal
 
-const CacheKey = "PollCount"
-const DefaultFloatPrecision = -1
-const DefaultServerAddr = "localhost:8080"
-const DefaultPoolInterval = 2
-const DefaultReportInterval = 10
-const DefaultServerStoreInterval = 300
-const DefaultFileStoragePath = "./backup.log"
-const DefaultFileStoragePermission = 0666
-const DefaultRestore = true
-const DefaultRandMantissa = 53
+const (
+	CacheKey                     = "PollCount"
+	DefaultFloatPrecision        = -1
+	DefaultServerAddr            = "localhost:8080"
+	DefaultPoolInterval          = 2
+	DefaultReportInterval        = 10
+	DefaultServerStoreInterval   = 300
+	DefaultFileStoragePath       = "./BACKUP"
+	DefaultFileStoragePermission = 0666
+	DefaultRestore               = true
+	DefaultRandMantissa          = 53
+)

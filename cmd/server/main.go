@@ -12,11 +12,13 @@ import (
 	"github.com/konstantin-kukharev/metrics/cmd/server/application"
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
+	"github.com/konstantin-kukharev/metrics/domain/event"
 	usecase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
 	"github.com/konstantin-kukharev/metrics/internal"
 	"github.com/konstantin-kukharev/metrics/internal/graceful"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
+	"github.com/konstantin-kukharev/metrics/internal/transport"
 )
 
 type Logger interface {
@@ -30,9 +32,14 @@ func main() {
 	log := logger.NewSlog()
 	log.WithDebug()
 	ctx := context.WithoutCancel(context.Background())
+	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
+
+	updater := make(chan event.MetricAdd)
+	bus := transport.NewEventBus(updater)
+	gs.AddTask(bus)
 
 	store := memory.NewStorage(log)
-	add := usecase.NewAddMetric(store)
+	add := usecase.NewAddMetric(store, bus)
 	getVal := usecase.NewGetMetric(store)
 	list := usecase.NewListMetric(store)
 	if conf.GetRestore() {
@@ -48,7 +55,7 @@ func main() {
 			if err := json.Unmarshal(data, z); err != nil {
 				continue
 			}
-			_ = add.Do(z)
+			store.Set(z)
 		}
 		file.Close()
 	}
@@ -61,16 +68,19 @@ func main() {
 	defer file.Close()
 
 	if conf.GetStoreInterval() == 0 {
-		store.WithStream(file)
+		events := make(chan event.MetricAdd)
+		bus.AddListener(events)
+		report := application.NewStreamReporter(file, events)
+		gs.AddTask(report)
 	}
 
 	serverTask := application.NewServer(add, getVal, list, conf, log)
-
-	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
 	gs.AddTask(serverTask)
 
 	if conf.GetStoreInterval() > 0 {
-		report := application.NewReporter(file, store, conf.GetStoreInterval())
+		events := make(chan event.MetricAdd)
+		bus.AddListener(events)
+		report := application.NewReporter(file, events, conf.GetStoreInterval())
 		gs.AddTask(report)
 	}
 

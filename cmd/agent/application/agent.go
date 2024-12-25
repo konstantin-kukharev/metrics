@@ -1,18 +1,60 @@
-package main
+package application
 
 import (
+	"context"
 	"runtime"
+	"time"
 
 	"github.com/konstantin-kukharev/metrics/domain"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	"github.com/konstantin-kukharev/metrics/internal"
 )
 
-type RuntimeMetric struct {
-	counter int64
+type config interface {
+	GetServerAddress() string
+	GetPoolInterval() time.Duration
 }
 
-func (mr *RuntimeMetric) List(mem *runtime.MemStats) []*entity.Metric {
+type logger interface {
+	Info(msg string, fields ...any)
+	Debug(msg string, fields ...any)
+	Warn(msg string, fields ...any)
+	Error(msg string, fields ...any)
+}
+
+type updater interface {
+	Do(...*entity.Metric) error
+}
+
+type Agent struct {
+	log          logger
+	poolInterval time.Duration
+	counter      int64
+	updater      updater
+}
+
+func (a *Agent) Run(ctx context.Context) error {
+	for {
+		select {
+		case <-time.After(a.poolInterval):
+			a.log.Info("update pool")
+			var mem runtime.MemStats
+			runtime.ReadMemStats(&mem)
+			err := a.updater.Do(a.update(&mem)...)
+			if err != nil {
+				a.log.Warn("error while update metrics",
+					"msg", err,
+				)
+			}
+		case <-ctx.Done():
+			a.log.Warn("agent stopped")
+
+			return nil
+		}
+	}
+}
+
+func (a *Agent) update(mem *runtime.MemStats) []*entity.Metric {
 	list := make([]*entity.Metric, 0)
 
 	for name, val := range map[string]float64{
@@ -53,21 +95,24 @@ func (mr *RuntimeMetric) List(mem *runtime.MemStats) []*entity.Metric {
 		list = append(list, metric)
 	}
 
-	mr.counter += 1
+	a.counter += 1
 	cnt := &entity.Metric{
 		ID:    "PollCount",
 		MType: domain.MetricCounter,
 	}
-	cnt.Delta = &mr.counter
+	cnt.Delta = &a.counter
 
 	list = append(list, cnt)
 
 	return list
 }
 
-func NewRuntimeMetric() *RuntimeMetric {
-	ms := new(RuntimeMetric)
-	ms.counter = 0
+func NewAgent(updater updater, app config, l logger) *Agent {
+	agent := new(Agent)
+	agent.poolInterval = app.GetPoolInterval()
+	agent.counter = 0
+	agent.updater = updater
+	agent.log = l
 
-	return ms
+	return agent
 }

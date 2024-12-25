@@ -1,15 +1,13 @@
 package application
 
 import (
-	"compress/gzip"
 	"context"
-	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/konstantin-kukharev/metrics/internal/handler"
+	"github.com/konstantin-kukharev/metrics/internal/middleware"
 )
 
 type ApplicationConfig interface {
@@ -36,12 +34,12 @@ func NewServer(
 	app ApplicationConfig,
 	l Logger) *Server {
 	router := chi.NewRouter()
-	router.Method("POST", "/update/{type}/{name}/{val}", WithLogging(handler.NewAddMetric(w), l))
-	router.Method("GET", "/value/{type}/{name}", WithLogging(handler.NewGetMetric(r), l))
-	router.Method("GET", "/", WithCompressing(WithLogging(handler.NewIndexMetric(lr), l)))
+	router.Method("POST", "/update/{type}/{name}/{val}", middleware.WithLogging(handler.NewAddMetric(w), l))
+	router.Method("GET", "/value/{type}/{name}", middleware.WithLogging(handler.NewGetMetric(r), l))
+	router.Method("GET", "/", middleware.WithCompressing(middleware.WithLogging(handler.NewIndexMetric(lr), l)))
 
-	router.Method("POST", "/update/", WithCompressing(WithLogging(handler.NewAddMetricV2(w), l)))
-	router.Method("POST", "/value/", WithCompressing(WithLogging(handler.NewMetricGetV2(r), l)))
+	router.Method("POST", "/update/", middleware.WithCompressing(middleware.WithLogging(handler.NewAddMetricV2(w), l)))
+	router.Method("POST", "/value/", middleware.WithCompressing(middleware.WithLogging(handler.NewMetricGetV2(r), l)))
 
 	return &Server{
 		config: app,
@@ -67,66 +65,4 @@ func (s *Server) Run(ctx context.Context) error {
 	}(ctx)
 
 	return s.server.ListenAndServe()
-}
-
-func WithLogging(h http.Handler, l Logger) http.Handler {
-	logFn := func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		uri := r.RequestURI
-		method := r.Method
-
-		h.ServeHTTP(w, r)
-
-		duration := time.Since(start)
-		l.Info("new request",
-			"uri", uri,
-			"method", method,
-			"duration", duration,
-		)
-	}
-
-	return http.HandlerFunc(logFn)
-}
-
-func WithCompressing(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		encoding := r.Header.Get("Content-Encoding")
-		if encoding == "gzip" {
-			reader, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			defer reader.Close()
-
-			r.Body = io.NopCloser(reader)
-		}
-
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			h.ServeHTTP(w, r)
-			return
-		}
-
-		w.Header().Set("Content-Encoding", "gzip")
-		gz, err := gzip.NewWriterLevel(w, gzip.BestCompression)
-		if err != nil {
-			h.ServeHTTP(w, r)
-			return
-		}
-		defer gz.Close()
-
-		gzrw := gzipResponseWriter{Writer: gz, ResponseWriter: w}
-
-		h.ServeHTTP(gzrw, r)
-	})
-}
-
-type gzipResponseWriter struct {
-	io.Writer
-	http.ResponseWriter
-}
-
-func (w gzipResponseWriter) Write(b []byte) (int, error) {
-	n, err := w.Writer.Write(b)
-	return n, err
 }

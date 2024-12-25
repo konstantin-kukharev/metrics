@@ -89,7 +89,7 @@ func NewTestHandler() *TestHandler {
 	log := logger.NewSlog()
 	store := memory.NewStorage(log)
 	g := ucase.NewGetMetric(store)
-	a := ucase.NewAddMetric(store)
+	a := ucase.NewAddMetric(store, nil)
 	l := ucase.NewListMetric(store)
 	th.get = NewGetMetric(g)
 	th.getV2 = NewMetricGetV2(g)

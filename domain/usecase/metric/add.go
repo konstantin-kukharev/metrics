@@ -4,7 +4,12 @@ import (
 	"context"
 
 	"github.com/konstantin-kukharev/metrics/domain/entity"
+	"github.com/konstantin-kukharev/metrics/domain/event"
 )
+
+type eventBus interface {
+	AddMetric(event.MetricAdd)
+}
 
 type Tx interface {
 	UnitOfWork(context.Context, func(context.Context) error) error
@@ -26,6 +31,7 @@ type UpdateMetricProvider interface {
 
 type AddMetric struct {
 	provider UpdateMetricProvider
+	eventBus eventBus
 }
 
 func (am *AddMetric) Do(ms ...*entity.Metric) error {
@@ -36,15 +42,19 @@ func (am *AddMetric) Do(ms ...*entity.Metric) error {
 			}
 
 			am.provider.Set(m)
+			if am.eventBus != nil {
+				am.eventBus.AddMetric(event.MetricAdd{Metric: m})
+			}
 		}
 
 		return nil
 	})
 }
 
-func NewAddMetric(a UpdateMetricProvider) *AddMetric {
+func NewAddMetric(a UpdateMetricProvider, eb eventBus) *AddMetric {
 	srv := &AddMetric{
 		provider: a,
+		eventBus: eb,
 	}
 
 	return srv

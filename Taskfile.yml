@@ -1,0 +1,33 @@
+version: '3'
+
+tasks:
+  lint:
+    desc: Run linters using golangci-lint
+    cmds:
+      - golangci-lint run --config .golangci.yml
+    silent: true
+  clear:
+    cmds:
+      - mkdir -p ./.runtime
+      - rm -f ./.runtime/{agent,server,BACKUP,test.log}
+    silent: true
+  build:
+    deps: [lint, clear]
+    cmds:
+      - go build -o ./.runtime/agent ./cmd/agent/*.go
+      - go build -o ./.runtime/server ./cmd/server/*.go
+    silent: true
+  test:
+    deps: [build]
+    cmds:
+      - go test -cover ./... > ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration1$ -binary-path=./.runtime/server >> ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration2[AB]*$ -source-path=\. -agent-binary-path=./.runtime/agent >> ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration3[AB]*$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server >> ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration4$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration5$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration6$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration7$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration8$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration9$ -file-storage-path=./BACKUP -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
+      - mv ./BACKUP ./.runtime/
