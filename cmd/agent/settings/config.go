@@ -2,7 +2,6 @@ package settings
 
 import (
 	"flag"
-	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -10,26 +9,10 @@ import (
 	"github.com/konstantin-kukharev/metrics/internal"
 )
 
-type Application interface {
-	GetServerAddress() string
-	GetReportInterval() time.Duration
-	GetPoolInterval() time.Duration
-	Log() Logger
-}
-
-type Logger interface {
-	Debug(msg string, fields ...any)
-	Info(msg string, fields ...any)
-	Warn(msg string, fields ...any)
-	Error(msg string, fields ...any)
-}
-
 type Config struct {
 	Address        string
 	PoolInterval   int
 	ReportInterval int
-	log            *slog.Logger
-	errLog         *slog.Logger
 }
 
 func (c *Config) GetServerAddress() string {
@@ -53,30 +36,14 @@ func New() *Config {
 		PoolInterval:   internal.DefaultPoolInterval,
 		ReportInterval: internal.DefaultReportInterval,
 	}
-	// init application logger
-	errHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelError,
-	})
-
-	c.errLog = slog.New(errHandler)
-
-	logHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelWarn,
-	})
-
-	c.log = slog.New(logHandler)
 
 	return c
 }
 
-func (c *Config) Log() Logger {
-	return c.log
-}
-
 func (c *Config) WithFlag() *Config {
 	flag.StringVar(&c.Address, "a", internal.DefaultServerAddr, "server address")
-	flag.IntVar(&c.ReportInterval, "r", 10, "report interval time duration")
-	flag.IntVar(&c.PoolInterval, "p", 2, "pool interval time duration")
+	flag.IntVar(&c.ReportInterval, "r", internal.DefaultReportInterval, "report interval time duration")
+	flag.IntVar(&c.PoolInterval, "p", internal.DefaultPoolInterval, "pool interval time duration")
 
 	flag.Parse()
 
@@ -102,22 +69,6 @@ func (c *Config) WithEnv() *Config {
 			c.PoolInterval = val
 		}
 	}
-
-	return c
-}
-
-func (c *Config) WithDebug() *Config {
-	opts := &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}
-	handler := slog.NewTextHandler(os.Stdout, opts)
-	logger := slog.New(handler)
-
-	c.log = logger.With(
-		slog.Group("program_info",
-			slog.Int("pid", os.Getpid()),
-		),
-	)
 
 	return c
 }
