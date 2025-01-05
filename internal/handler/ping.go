@@ -35,6 +35,12 @@ func (s *Ping) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
+	err = db.Ping()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
