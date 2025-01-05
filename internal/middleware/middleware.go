@@ -7,25 +7,21 @@ import (
 	"net/http"
 	"strings"
 	"time"
-)
 
-type logger interface {
-	Info(msg string, fields ...any)
-	Debug(msg string, fields ...any)
-	Warn(msg string, fields ...any)
-	Error(msg string, fields ...any)
-}
+	"github.com/konstantin-kukharev/metrics/internal/logger"
+	"go.uber.org/zap"
+)
 
 type LoggingRoundTripper struct {
 	next http.RoundTripper
-	log  logger
+	log  *logger.ZapLogger
 }
 
 type CompressRoundTripper struct {
 	next http.RoundTripper
 }
 
-func NewLoggingRoundTripper(next http.RoundTripper, l logger) *LoggingRoundTripper {
+func NewLoggingRoundTripper(next http.RoundTripper, l *logger.ZapLogger) *LoggingRoundTripper {
 	return &LoggingRoundTripper{
 		next: next,
 		log:  l,
@@ -34,11 +30,11 @@ func NewLoggingRoundTripper(next http.RoundTripper, l logger) *LoggingRoundTripp
 
 func (rt *LoggingRoundTripper) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	defer func(begin time.Time) {
-		rt.log.Info("Request",
-			"method", req.Method,
-			"host", req.URL.Scheme+"://"+req.URL.Host+req.URL.Path,
-			"err", err,
-			"took", time.Since(begin),
+		rt.log.InfoCtx(req.Context(), "Request",
+			zap.String("method", req.Method),
+			zap.String("host", req.URL.Scheme+"://"+req.URL.Host+req.URL.Path),
+			zap.Any("error", err),
+			zap.Duration("took", time.Since(begin)),
 		)
 	}(time.Now())
 
@@ -80,7 +76,7 @@ func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (resp *http.Respons
 	return rt.next.RoundTrip(r)
 }
 
-func WithLogging(h http.Handler, l logger) http.Handler {
+func WithLogging(h http.Handler, l *logger.ZapLogger) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		uri := r.RequestURI
@@ -89,10 +85,10 @@ func WithLogging(h http.Handler, l logger) http.Handler {
 		h.ServeHTTP(w, r)
 
 		duration := time.Since(start)
-		l.Info("new request",
-			"uri", uri,
-			"method", method,
-			"duration", duration,
+		l.InfoCtx(r.Context(), "new request",
+			zap.String("uri", uri),
+			zap.String("method", method),
+			zap.Duration("duration", duration),
 		)
 	}
 

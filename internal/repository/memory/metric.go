@@ -5,19 +5,15 @@ import (
 	"sync"
 
 	"github.com/konstantin-kukharev/metrics/domain/entity"
+	"github.com/konstantin-kukharev/metrics/internal/logger"
 )
-
-type Logger interface {
-	Debug(msg string, fields ...any)
-	Error(msg string, fields ...any)
-}
 
 type key struct {
 	t, n string
 }
 
 type MetricStorage struct {
-	log   Logger
+	log   *logger.ZapLogger
 	store map[key]*entity.Metric
 	mx    *sync.RWMutex
 }
@@ -67,7 +63,7 @@ func (ms *MetricStorage) UnitOfWork(ctx context.Context, payload func(context.Co
 	return payload(ctx)
 }
 
-func NewStorage(l Logger) *MetricStorage {
+func NewStorage(l *logger.ZapLogger) *MetricStorage {
 	ms := new(MetricStorage)
 	ms.log = l
 	ms.store = map[key]*entity.Metric{}

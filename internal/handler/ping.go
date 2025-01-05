@@ -6,6 +6,8 @@ import (
 	"database/sql"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/konstantin-kukharev/metrics/internal/logger"
+	"go.uber.org/zap"
 )
 
 type pingConfig interface {
@@ -14,15 +16,13 @@ type pingConfig interface {
 
 type Ping struct {
 	dns string
-	log log
-}
-
-type log interface {
-	Info(msg string, fields ...any)
+	log *logger.ZapLogger
 }
 
 func (s *Ping) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.log.Info("new request", "DB DNS:", s.dns)
+	s.log.InfoCtx(r.Context(), "new request:",
+		zap.String("DB DNS", s.dns),
+	)
 	if s.dns == "" {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -44,7 +44,7 @@ func (s *Ping) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func NewPing(cfg pingConfig, l log) *Ping {
+func NewPing(cfg pingConfig, l *logger.ZapLogger) *Ping {
 	serv := &Ping{dns: cfg.GetDatabaseDNS(), log: l}
 	return serv
 }

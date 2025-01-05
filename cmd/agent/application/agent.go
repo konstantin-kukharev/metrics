@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"log"
 	"runtime"
 	"time"
 
@@ -15,19 +16,12 @@ type config interface {
 	GetPoolInterval() time.Duration
 }
 
-type logger interface {
-	Info(msg string, fields ...any)
-	Debug(msg string, fields ...any)
-	Warn(msg string, fields ...any)
-	Error(msg string, fields ...any)
-}
-
 type updater interface {
 	Do(...*entity.Metric) error
 }
 
 type Agent struct {
-	log          logger
+	log          *log.Logger
 	poolInterval time.Duration
 	counter      int64
 	updater      updater
@@ -37,17 +31,17 @@ func (a *Agent) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-time.After(a.poolInterval):
-			a.log.Info("update pool")
+			a.log.Print("update pool")
 			var mem runtime.MemStats
 			runtime.ReadMemStats(&mem)
 			err := a.updater.Do(a.update(&mem)...)
 			if err != nil {
-				a.log.Warn("error while update metrics",
+				a.log.Print("error while update metrics",
 					"msg", err,
 				)
 			}
 		case <-ctx.Done():
-			a.log.Warn("agent stopped")
+			a.log.Print("agent stopped")
 
 			return nil
 		}
@@ -107,7 +101,7 @@ func (a *Agent) update(mem *runtime.MemStats) []*entity.Metric {
 	return list
 }
 
-func NewAgent(updater updater, app config, l logger) *Agent {
+func NewAgent(updater updater, app config, l *log.Logger) *Agent {
 	agent := new(Agent)
 	agent.poolInterval = app.GetPoolInterval()
 	agent.counter = 0

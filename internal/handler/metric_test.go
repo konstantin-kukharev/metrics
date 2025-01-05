@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/konstantin-kukharev/metrics/domain"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
+	"go.uber.org/zap"
 
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	ucase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
@@ -86,16 +88,19 @@ func (h *TestHandler) Add(t, n, v string) *httptest.ResponseRecorder {
 
 func NewTestHandler() *TestHandler {
 	th := new(TestHandler)
-	log := logger.NewSlog()
-	store := memory.NewStorage(log)
+	l, err := logger.NewZapLogger(zap.InfoLevel)
+	if err != nil {
+		log.Panic(err)
+	}
+	store := memory.NewStorage(l)
 	g := ucase.NewGetMetric(store)
 	a := ucase.NewAddMetric(store, nil)
-	l := ucase.NewListMetric(store)
+	ll := ucase.NewListMetric(store)
 	th.get = NewGetMetric(g)
 	th.getV2 = NewMetricGetV2(g)
 	th.add = NewAddMetric(a)
 	th.addV2 = NewAddMetricV2(a)
-	th.list = NewIndexMetric(l)
+	th.list = NewIndexMetric(ll)
 
 	return th
 }

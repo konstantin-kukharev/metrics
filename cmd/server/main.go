@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"log"
 	"os"
 	"syscall"
 	"time"
@@ -19,33 +20,37 @@ import (
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 	"github.com/konstantin-kukharev/metrics/internal/transport"
+	"go.uber.org/zap"
 )
-
-type Logger interface {
-	Info(msg string, fields ...any)
-	Debug(msg string, fields ...any)
-	Error(msg string, fields ...any)
-}
 
 func main() {
 	conf := settings.NewConfig().WithFlag().WithEnv()
-	log := logger.NewSlog()
-	log.WithDebug()
-	ctx := context.WithoutCancel(context.Background())
+
+	ctx := context.Background()
+	l, err := logger.NewZapLogger(zap.InfoLevel)
+	if err != nil {
+		log.Panic(err)
+	}
+	ctx = l.WithContextFields(ctx,
+		zap.Int("pid", os.Getpid()),
+		zap.String("app", "server"))
+
+	defer l.Sync()
+
 	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
 
 	updater := make(chan event.MetricAdd)
 	bus := transport.NewEventBus(updater)
 	gs.AddTask(bus)
 
-	store := memory.NewStorage(log)
+	store := memory.NewStorage(l)
 	add := usecase.NewAddMetric(store, bus)
 	getVal := usecase.NewGetMetric(store)
 	list := usecase.NewListMetric(store)
 	if conf.GetRestore() {
 		file, err := os.OpenFile(conf.GetFileStoragePath(), os.O_RDONLY|os.O_CREATE, internal.DefaultFileStoragePermission)
 		if err != nil {
-			log.Error("open file", "error", err)
+			l.ErrorCtx(ctx, err.Error())
 			return
 		}
 		sc := bufio.NewScanner(file)
@@ -62,7 +67,7 @@ func main() {
 
 	file, err := os.OpenFile(conf.GetFileStoragePath(), os.O_WRONLY|os.O_APPEND|os.O_CREATE, internal.DefaultFileStoragePermission)
 	if err != nil {
-		log.Error("open file", "error", err)
+		l.ErrorCtx(ctx, err.Error())
 		return
 	}
 	defer file.Close()
@@ -74,7 +79,7 @@ func main() {
 		gs.AddTask(report)
 	}
 
-	serverTask := application.NewServer(add, getVal, list, conf, log)
+	serverTask := application.NewServer(add, getVal, list, conf, l)
 	gs.AddTask(serverTask)
 
 	if conf.GetStoreInterval() > 0 {
@@ -87,6 +92,6 @@ func main() {
 	err = gs.Wait(syscall.SIGTERM, syscall.SIGINT)
 
 	if err != nil {
-		log.Error("error occurred", "error", err)
+		l.ErrorCtx(ctx, err.Error())
 	}
 }

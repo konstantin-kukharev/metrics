@@ -7,7 +7,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/konstantin-kukharev/metrics/internal/handler"
+	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/middleware"
+	"go.uber.org/zap"
 )
 
 type ApplicationConfig interface {
@@ -15,16 +17,9 @@ type ApplicationConfig interface {
 	GetDatabaseDNS() string
 }
 
-type Logger interface {
-	Info(msg string, fields ...any)
-	Debug(msg string, fields ...any)
-	Warn(msg string, fields ...any)
-	Error(msg string, fields ...any)
-}
-
 type Server struct {
 	config ApplicationConfig
-	log    Logger
+	log    *logger.ZapLogger
 	server *http.Server
 }
 
@@ -33,7 +28,7 @@ func NewServer(
 	r handler.MetricReader,
 	lr handler.MetricListReader,
 	app ApplicationConfig,
-	l Logger) *Server {
+	l *logger.ZapLogger) *Server {
 	router := chi.NewRouter()
 	router.Method("POST", "/update/{type}/{name}/{val}", middleware.WithLogging(handler.NewAddMetric(w), l))
 	router.Method("GET", "/value/{type}/{name}", middleware.WithLogging(handler.NewGetMetric(r), l))
@@ -48,6 +43,7 @@ func NewServer(
 		config: app,
 		log:    l,
 		server: &http.Server{
+			ErrorLog:          l.Std(),
 			Handler:           router,
 			Addr:              app.GetAddress(),
 			ReadHeaderTimeout: 1 * time.Second,
@@ -61,9 +57,11 @@ func (s *Server) Run(ctx context.Context) error {
 
 		err := s.server.Shutdown(c)
 		if err != nil {
-			s.log.Error("http server shutting down: " + err.Error())
+			s.log.ErrorCtx(c, "http server shutting down",
+				zap.String("error", err.Error()),
+			)
 		} else {
-			s.log.Info("http server shutdown processed successfully")
+			s.log.InfoCtx(c, "http server shutdown processed successfully")
 		}
 	}(ctx)
 
