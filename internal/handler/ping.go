@@ -14,11 +14,15 @@ type pingConfig interface {
 
 type Ping struct {
 	dns string
+	log log
+}
+
+type log interface {
+	Info(msg string, fields ...any)
 }
 
 func (s *Ping) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain")
-
+	s.log.Info("new request", "DB DNS:", s.dns)
 	if s.dns == "" {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -34,7 +38,7 @@ func (s *Ping) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func NewPing(cfg pingConfig) *Ping {
-	serv := &Ping{dns: cfg.GetDatabaseDNS()}
+func NewPing(cfg pingConfig, l log) *Ping {
+	serv := &Ping{dns: cfg.GetDatabaseDNS(), log: l}
 	return serv
 }
