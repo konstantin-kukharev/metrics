@@ -11,4 +11,5 @@ const (
 	DefaultFileStoragePermission = 0666
 	DefaultRestore               = true
 	DefaultRandMantissa          = 53
+	DefaultDatabaseDNS           = ""
 )

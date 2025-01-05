@@ -1,0 +1,59 @@
+version: '3.4'
+services:
+  postgres:
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_DB: "postgres"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - metrics:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+  app_server:
+    container_name: app-server
+    build:
+      context: ../
+      dockerfile: deployments/dev.Dockerfile
+      target: dev-runner
+      args:
+        APPLICATION_NAME: server
+    command: "/application -a=app_server:8080 -d='postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable'"
+    ports:
+      - "8081:8080"
+    volumes:
+      - metrics:/tmp
+      - ./../site/:/site
+    links:
+      - postgres
+    depends_on:
+      - postgres
+  app_agent:
+    container_name: app-agent
+    build:
+      context: ../
+      dockerfile: deployments/dev.Dockerfile
+      target: dev-runner
+      args:
+        APPLICATION_NAME: agent
+    command: "/application -a=app_server:8080"
+    links:
+      - app_server
+    depends_on:
+      - app_server
+volumes:
+  metrics:
+    name: metrics

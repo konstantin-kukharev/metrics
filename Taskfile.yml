@@ -22,7 +22,7 @@ tasks:
     cmds:
       - go test -cover ./... > ./.runtime/test.log
       - metricstest -test.v -test.run=^TestIteration1$ -binary-path=./.runtime/server >> ./.runtime/test.log
-      - metricstest -test.v -test.run=^TestIteration2[AB]*$ -source-path=\. -agent-binary-path=./.runtime/agent >> ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration2[AB]*$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server >> ./.runtime/test.log
       - metricstest -test.v -test.run=^TestIteration3[AB]*$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server >> ./.runtime/test.log
       - metricstest -test.v -test.run=^TestIteration4$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
       - metricstest -test.v -test.run=^TestIteration5$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
@@ -30,4 +30,11 @@ tasks:
       - metricstest -test.v -test.run=^TestIteration7$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
       - metricstest -test.v -test.run=^TestIteration8$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
       - metricstest -test.v -test.run=^TestIteration9$ -file-storage-path=./BACKUP -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration10$ -file-storage-path=./BACKUP -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 -database-dsn='postgres://localhost:postgres@postgres:5432/postgres?sslmode=disable' >> ./.runtime/test.log
       - mv ./BACKUP ./.runtime/
+  run-dev:
+    cmds:
+      - docker-compose -f ./deployments/dev.docker-compose.yaml up -d --build
+  stop-dev:
+    cmds:
+      - docker-compose -f ./deployments/dev.docker-compose.yaml down --remove-orphans

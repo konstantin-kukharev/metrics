@@ -12,6 +12,7 @@ import (
 
 type ApplicationConfig interface {
 	GetAddress() string
+	GetDatabaseDNS() string
 }
 
 type Logger interface {
@@ -40,6 +41,10 @@ func NewServer(
 
 	router.Method("POST", "/update/", middleware.WithCompressing(middleware.WithLogging(handler.NewAddMetricV2(w), l)))
 	router.Method("POST", "/value/", middleware.WithCompressing(middleware.WithLogging(handler.NewMetricGetV2(r), l)))
+
+	if app.GetDatabaseDNS() != "" {
+		router.Method("GET", "/ping", middleware.WithLogging(handler.NewPing(app), l))
+	}
 
 	return &Server{
 		config: app,
