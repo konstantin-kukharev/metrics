@@ -10,20 +10,11 @@ import (
 )
 
 type MetricAddV2 struct {
-	service MetricWriter
+	service metricWriter
 }
 
 func (s *MetricAddV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	headerContentTtype := r.Header.Get("Content-Type")
 	resp := make(map[string]string)
-	if headerContentTtype != "application/json" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnsupportedMediaType)
-		resp["message"] = "Content Type is not application/json"
-		jsonResp, _ := json.Marshal(resp)
-		_, _ = w.Write(jsonResp)
-		return
-	}
 
 	w.Header().Add("Content-Type", "application/json")
 	data := &entity.Metric{}
@@ -60,20 +51,26 @@ func (s *MetricAddV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = s.service.Do(data); err != nil {
+	res, err := s.service.Set(r.Context(), data)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-
+	if len(res) != 1 {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	m := res[0]
 	result := &entity.Metric{
-		ID:    data.ID,
-		MType: data.MType,
+		ID:    m.ID,
+		MType: m.MType,
 	}
 
 	if data.Delta != nil {
-		result.Delta = data.Delta
+		result.Delta = m.Delta
 	}
 	if data.Value != nil {
-		result.Value = data.Value
+		result.Value = m.Value
 	}
 
 	resultJSON, err := json.Marshal(result)
@@ -87,7 +84,7 @@ func (s *MetricAddV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(resultJSON)
 }
 
-func NewAddMetricV2(srv MetricWriter) *MetricAddV2 {
+func NewAddMetricV2(srv metricWriter) *MetricAddV2 {
 	serv := &MetricAddV2{service: srv}
 	return serv
 }

@@ -8,12 +8,12 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type zapFieldsKey struct{}
+type fieldsKey struct{}
 
-type ZapFields map[string]zap.Field
+type Fields map[string]zap.Field
 
-func (zf ZapFields) Append(fields ...zap.Field) ZapFields {
-	zfCopy := make(ZapFields)
+func (zf Fields) Append(fields ...zap.Field) Fields {
+	zfCopy := make(Fields)
 	for k, v := range zf {
 		zfCopy[k] = v
 	}
@@ -64,17 +64,17 @@ func defaultSettings(level zap.AtomicLevel) *settings {
 	}
 }
 
-type ZapLogger struct {
+type Logger struct {
 	logger *zap.Logger
 	level  zap.AtomicLevel
 }
 
-// NewZapLogger создает новый логгер Zap.
+// NewLogger создает новый логгер Zap.
 //
 // level - уровень логирования.
 //
 // Возвращает логгер Zap и ошибку, если возникла ошибка при создании логгера.
-func NewZapLogger(level zapcore.Level) (*ZapLogger, error) {
+func NewLogger(level zapcore.Level) (*Logger, error) {
 	atomic := zap.NewAtomicLevelAt(level)
 	settings := defaultSettings(atomic)
 
@@ -83,23 +83,23 @@ func NewZapLogger(level zapcore.Level) (*ZapLogger, error) {
 		return nil, err
 	}
 
-	return &ZapLogger{
+	return &Logger{
 		logger: l,
 		level:  atomic,
 	}, nil
 }
 
-func (z *ZapLogger) WithContextFields(ctx context.Context, fields ...zap.Field) context.Context {
-	ctxFields, _ := ctx.Value(zapFieldsKey{}).(ZapFields)
+func (z *Logger) WithContextFields(ctx context.Context, fields ...zap.Field) context.Context {
+	ctxFields, _ := ctx.Value(fieldsKey{}).(Fields)
 	if ctxFields == nil {
-		ctxFields = make(ZapFields)
+		ctxFields = make(Fields)
 	}
 
 	merged := ctxFields.Append(fields...)
-	return context.WithValue(ctx, zapFieldsKey{}, merged)
+	return context.WithValue(ctx, fieldsKey{}, merged)
 }
 
-func (z *ZapLogger) maskField(f zap.Field) zap.Field {
+func (z *Logger) maskField(f zap.Field) zap.Field {
 	if f.Key == "password" {
 		return zap.String(f.Key, "******")
 	}
@@ -107,15 +107,15 @@ func (z *ZapLogger) maskField(f zap.Field) zap.Field {
 	return f
 }
 
-func (z *ZapLogger) Sync() {
+func (z *Logger) Sync() {
 	_ = z.logger.Sync()
 }
 
-func (z *ZapLogger) withCtxFields(ctx context.Context, fields ...zap.Field) []zap.Field {
-	fs := make(ZapFields)
+func (z *Logger) withCtxFields(ctx context.Context, fields ...zap.Field) []zap.Field {
+	fs := make(Fields)
 
-	ctxFields, ok := ctx.Value(zapFieldsKey{}).(ZapFields)
-	if ok {
+	ctxFields, _ := ctx.Value(fieldsKey{}).(Fields)
+	if ctxFields != nil {
 		fs = ctxFields
 	}
 
@@ -129,34 +129,34 @@ func (z *ZapLogger) withCtxFields(ctx context.Context, fields ...zap.Field) []za
 	return maskedFields
 }
 
-func (z *ZapLogger) InfoCtx(ctx context.Context, msg string, fields ...zap.Field) {
+func (z *Logger) InfoCtx(ctx context.Context, msg string, fields ...zap.Field) {
 	z.logger.Info(msg, z.withCtxFields(ctx, fields...)...)
 }
 
-func (z *ZapLogger) DebugCtx(ctx context.Context, msg string, fields ...zap.Field) {
+func (z *Logger) DebugCtx(ctx context.Context, msg string, fields ...zap.Field) {
 	z.logger.Debug(msg, z.withCtxFields(ctx, fields...)...)
 }
 
-func (z *ZapLogger) WarnCtx(ctx context.Context, msg string, fields ...zap.Field) {
+func (z *Logger) WarnCtx(ctx context.Context, msg string, fields ...zap.Field) {
 	z.logger.Warn(msg, z.withCtxFields(ctx, fields...)...)
 }
 
-func (z *ZapLogger) ErrorCtx(ctx context.Context, msg string, fields ...zap.Field) {
+func (z *Logger) ErrorCtx(ctx context.Context, msg string, fields ...zap.Field) {
 	z.logger.Error(msg, z.withCtxFields(ctx, fields...)...)
 }
 
-func (z *ZapLogger) FatalCtx(ctx context.Context, msg string, fields ...zap.Field) {
+func (z *Logger) FatalCtx(ctx context.Context, msg string, fields ...zap.Field) {
 	z.logger.Fatal(msg, z.withCtxFields(ctx, fields...)...)
 }
 
-func (z *ZapLogger) PanicCtx(ctx context.Context, msg string, fields ...zap.Field) {
+func (z *Logger) PanicCtx(ctx context.Context, msg string, fields ...zap.Field) {
 	z.logger.Panic(msg, z.withCtxFields(ctx, fields...)...)
 }
 
-func (z *ZapLogger) SetLevel(level zapcore.Level) {
+func (z *Logger) SetLevel(level zapcore.Level) {
 	z.level.SetLevel(level)
 }
 
-func (z *ZapLogger) Std() *log.Logger {
+func (z *Logger) Std() *log.Logger {
 	return zap.NewStdLog(z.logger)
 }

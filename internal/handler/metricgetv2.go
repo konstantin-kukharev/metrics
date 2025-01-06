@@ -10,20 +10,11 @@ import (
 )
 
 type MetricGetV2 struct {
-	service MetricReader
+	service metricReader
 }
 
 func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	headerContentTtype := r.Header.Get("Content-Type")
 	resp := make(map[string]string)
-	if headerContentTtype != "application/json" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnsupportedMediaType)
-		resp["message"] = "Content Type is not application/json"
-		jsonResp, _ := json.Marshal(resp)
-		_, _ = w.Write(jsonResp)
-		return
-	}
 
 	w.Header().Add("Content-Type", "application/json")
 	data := &entity.Metric{}
@@ -60,7 +51,7 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, ok := s.service.Do(data)
+	m, ok := s.service.Get(r.Context(), data)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -90,7 +81,7 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(resultJSON)
 }
 
-func NewMetricGetV2(srv MetricReader) *MetricGetV2 {
+func NewMetricGetV2(srv metricReader) *MetricGetV2 {
 	serv := &MetricGetV2{service: srv}
 	return serv
 }

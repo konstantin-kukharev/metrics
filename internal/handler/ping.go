@@ -10,13 +10,9 @@ import (
 	"go.uber.org/zap"
 )
 
-type pingConfig interface {
-	GetDatabaseDNS() string
-}
-
 type Ping struct {
 	dns string
-	log *logger.ZapLogger
+	log *logger.Logger
 }
 
 func (s *Ping) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +40,7 @@ func (s *Ping) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func NewPing(cfg pingConfig, l *logger.ZapLogger) *Ping {
-	serv := &Ping{dns: cfg.GetDatabaseDNS(), log: l}
+func NewPing(dns string, l *logger.Logger) *Ping {
+	serv := &Ping{dns: dns, log: l}
 	return serv
 }

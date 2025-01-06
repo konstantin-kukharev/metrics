@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/konstantin-kukharev/metrics/domain/entity"
 	"github.com/konstantin-kukharev/metrics/internal/handler"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/middleware"
+
 	"go.uber.org/zap"
 )
 
@@ -19,25 +21,35 @@ type ApplicationConfig interface {
 
 type Server struct {
 	config ApplicationConfig
-	log    *logger.ZapLogger
+	log    *logger.Logger
 	server *http.Server
 }
 
+type repo interface {
+	Set(context.Context, ...*entity.Metric) ([]*entity.Metric, error)
+	Get(context.Context, *entity.Metric) (*entity.Metric, bool)
+	List(context.Context) []*entity.Metric
+}
+
 func NewServer(
-	w handler.MetricWriter,
-	r handler.MetricReader,
-	lr handler.MetricListReader,
-	app ApplicationConfig,
-	l *logger.ZapLogger) *Server {
+	l *logger.Logger,
+	s repo,
+	app ApplicationConfig) *Server {
 	router := chi.NewRouter()
-	router.Method("POST", "/update/{type}/{name}/{val}", middleware.WithLogging(handler.NewAddMetric(w), l))
-	router.Method("GET", "/value/{type}/{name}", middleware.WithLogging(handler.NewGetMetric(r), l))
-	router.Method("GET", "/", middleware.WithCompressing(middleware.WithLogging(handler.NewIndexMetric(lr), l)))
+	router.Method("POST", "/update/{type}/{name}/{val}", middleware.WithLogging(handler.NewAddMetric(s), l))
+	router.Method("GET", "/value/{type}/{name}", middleware.WithLogging(handler.NewGetMetric(s), l))
+	router.Method("GET", "/", middleware.WithCompressing(middleware.WithLogging(handler.NewIndexMetric(s), l)))
 
-	router.Method("POST", "/update/", middleware.WithCompressing(middleware.WithLogging(handler.NewAddMetricV2(w), l)))
-	router.Method("POST", "/value/", middleware.WithCompressing(middleware.WithLogging(handler.NewMetricGetV2(r), l)))
+	router.Method("POST", "/update/", middleware.WithJSONContent(
+		middleware.WithCompressing(
+			middleware.WithLogging(
+				handler.NewAddMetricV2(s), l))))
+	router.Method("POST", "/value/", middleware.WithJSONContent(
+		middleware.WithCompressing(
+			middleware.WithLogging(
+				handler.NewMetricGetV2(s), l))))
 
-	router.Method("GET", "/ping", middleware.WithLogging(handler.NewPing(app, l), l))
+	router.Method("GET", "/ping", middleware.WithLogging(handler.NewPing(app.GetDatabaseDNS(), l), l))
 
 	return &Server{
 		config: app,

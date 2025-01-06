@@ -16,29 +16,22 @@ import (
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 	"github.com/konstantin-kukharev/metrics/internal/roundtripper"
-
-	usecase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
 )
 
 func main() {
 	conf := settings.New().WithFlag().WithEnv()
 
 	ctx := context.Background()
-	l, err := logger.NewZapLogger(zap.InfoLevel)
+	l, err := logger.NewLogger(zap.InfoLevel)
 	if err != nil {
 		log.Panic(err)
 	}
 	ctx = l.WithContextFields(ctx,
 		zap.Int("pid", os.Getpid()),
-		zap.String("app", "agent"))
-
+		zap.String("app", "server"))
 	defer l.Sync()
 
-	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
-
-	store := memory.NewStorage(l)
-	add := usecase.NewAddMetric(store, nil)
-	get := usecase.NewListMetric(store)
+	store := memory.NewMetric(l)
 
 	var rt http.RoundTripper
 	rt = http.DefaultTransport
@@ -47,11 +40,13 @@ func main() {
 	cli := &http.Client{
 		Transport: rt,
 	}
-	r := application.NewReporter(cli, get, "http://"+conf.GetServerAddress()+"/update/", conf.GetReportInterval())
-	gs.AddTask(r)
+	reporter := application.NewReporter(cli, store, "http://"+conf.GetServerAddress()+"/update/", conf.GetReportInterval())
+	agent := application.NewAgent(store, conf, l.Std())
 
-	agent := application.NewAgent(add, conf, l.Std())
+	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
+	gs.AddTask(store)
 	gs.AddTask(agent)
+	gs.AddTask(reporter)
 
 	err = gs.Wait(syscall.SIGTERM, syscall.SIGINT)
 

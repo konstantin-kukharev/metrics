@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -8,13 +9,12 @@ import (
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 )
 
-type MetricReader interface {
-	// Get get metric
-	Do(m *entity.Metric) (*entity.Metric, bool)
+type metricReader interface {
+	Get(context.Context, *entity.Metric) (*entity.Metric, bool)
 }
 
 type MetricGet struct {
-	service MetricReader
+	service metricReader
 }
 
 func (s *MetricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +45,7 @@ func (s *MetricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if v, ok := s.service.Do(data); ok {
+	if v, ok := s.service.Get(r.Context(), data); ok {
 		res := v.GetValue()
 		_, err := w.Write([]byte(res))
 		if err != nil {
@@ -58,7 +58,7 @@ func (s *MetricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 }
 
-func NewGetMetric(srv MetricReader) *MetricGet {
+func NewGetMetric(srv metricReader) *MetricGet {
 	serv := &MetricGet{service: srv}
 	return serv
 }

@@ -49,18 +49,16 @@ func NewConfig() *Config {
 	return c
 }
 
-func (c *Config) WithFlag() *Config {
+func (c *Config) WithFlag() {
 	flag.StringVar(&c.Address, "a", internal.DefaultServerAddr, "server address")
 	flag.IntVar(&c.StoreInterval, "i", internal.DefaultServerStoreInterval, "interval to store data on FS")
 	flag.StringVar(&c.FileStoragePath, "f", internal.DefaultFileStoragePath, "file path to store data")
 	flag.BoolVar(&c.Restore, "r", internal.DefaultRestore, "file path to store data")
 	flag.StringVar(&c.DatabaseDNS, "d", internal.DefaultDatabaseDNS, "database dns path")
 	flag.Parse()
-
-	return c
 }
 
-func (c *Config) WithEnv() *Config {
+func (c *Config) WithEnv() {
 	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
 		c.Address = envRunAddr
 	}
@@ -80,6 +78,4 @@ func (c *Config) WithEnv() *Config {
 	if envDB := os.Getenv("DATABASE_DSN"); envDB != "" {
 		c.DatabaseDNS = envDB
 	}
-
-	return c
 }

@@ -10,10 +10,10 @@ import (
 
 type Logging struct {
 	next http.RoundTripper
-	log  *logger.ZapLogger
+	log  *logger.Logger
 }
 
-func NewLogging(next http.RoundTripper, l *logger.ZapLogger) *Logging {
+func NewLogging(next http.RoundTripper, l *logger.Logger) *Logging {
 	return &Logging{
 		next: next,
 		log:  l,

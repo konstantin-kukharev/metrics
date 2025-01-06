@@ -10,18 +10,18 @@ import (
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 )
 
-type getter interface {
-	Do() []*entity.Metric
+type storage interface {
+	List(context.Context) []*entity.Metric
 }
 
 type Reporter struct {
 	cli *http.Client
 	url string
-	s   getter
+	s   storage
 	i   time.Duration
 }
 
-func NewReporter(f *http.Client, s getter, url string, i time.Duration) *Reporter {
+func NewReporter(f *http.Client, s storage, url string, i time.Duration) *Reporter {
 	return &Reporter{
 		cli: f,
 		url: url,
@@ -30,14 +30,14 @@ func NewReporter(f *http.Client, s getter, url string, i time.Duration) *Reporte
 	}
 }
 
-func (r *Reporter) report() {
-	for _, m := range r.s.Do() {
+func (r *Reporter) report(ctx context.Context) {
+	for _, m := range r.s.List(ctx) {
 		b, err := json.Marshal(m)
 		if err != nil {
 			continue
 		}
 
-		request, err := http.NewRequestWithContext(context.TODO(), http.MethodPost, r.url, bytes.NewBuffer(b))
+		request, err := http.NewRequestWithContext(ctx, http.MethodPost, r.url, bytes.NewBuffer(b))
 		if err != nil {
 			continue
 		}
@@ -54,7 +54,9 @@ func (r *Reporter) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-time.After(r.i):
-			r.report()
+			c, cncl := context.WithDeadline(ctx, time.Now().Add(1*time.Second))
+			r.report(c)
+			cncl()
 		case <-ctx.Done():
 
 			return nil
