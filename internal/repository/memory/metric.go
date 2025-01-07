@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
@@ -83,36 +82,37 @@ func (ms *MetricStorage) List(ctx context.Context) []*entity.Metric {
 	return list
 }
 
-func (ms *MetricStorage) update(ctx context.Context, req addRequest) {
+func (ms *MetricStorage) update(_ context.Context, req addRequest) {
 	ms.mx.Lock()
+	defer ms.mx.Unlock()
+	defer close(req.response)
 
 	for _, m := range req.request {
-		res, ok := ms.Get(ctx, m)
+		k := key{t: m.MType, n: m.ID}
+		res, ok := ms.store[k]
 		if ok {
 			m.Aggregate(res)
 		}
-		k := key{t: m.MType, n: m.ID}
 		ms.store[k] = m
 	}
 
-	ms.mx.Unlock()
 	req.response <- req.request
 }
 
 func (ms *MetricStorage) Run(ctx context.Context) error {
 	ms.state = stateRunning
+	ms.log.InfoCtx(ctx, "memory storage is running")
+
 	for {
 		select {
 		case req := <-ms.add:
-			c, cncl := context.WithTimeout(ctx, 1*time.Second)
+			c := context.WithoutCancel(ctx)
 			ms.update(c, req)
-			cncl()
 		case <-ctx.Done():
 			ms.state = stateStop
 			for req := range ms.add {
-				c, cncl := context.WithTimeout(ctx, 1*time.Second)
+				c := context.WithoutCancel(ctx)
 				ms.update(c, req)
-				cncl()
 			}
 
 			return nil

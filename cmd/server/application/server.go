@@ -77,5 +77,8 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 	}(ctx)
 
+	s.log.InfoCtx(ctx, "http server running",
+		zap.String("address", s.config.GetAddress()),
+	)
 	return s.server.ListenAndServe()
 }

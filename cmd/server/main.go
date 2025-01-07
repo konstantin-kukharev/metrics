@@ -12,6 +12,7 @@ import (
 	"github.com/konstantin-kukharev/metrics/internal/graceful"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/repository"
+	"github.com/konstantin-kukharev/metrics/internal/repository/file"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 	"go.uber.org/zap"
 )
@@ -31,11 +32,13 @@ func main() {
 		zap.String("app", "server"))
 	defer l.Sync()
 
+	l.InfoCtx(ctx, "server running with options", zap.Any("config", conf))
+
 	var storage repository.Metric
 	switch {
 	case conf.GetDatabaseDNS() != "":
-	case conf.FileStoragePath != "" && conf.GetStoreInterval() != 0:
-	case conf.FileStoragePath != "" && conf.GetStoreInterval() == 0:
+	case conf.FileStoragePath != "":
+		storage = file.NewMetric(l, conf)
 	default:
 		storage = memory.NewMetric(l)
 	}
@@ -48,6 +51,6 @@ func main() {
 	err = gs.Wait(syscall.SIGTERM, syscall.SIGINT)
 
 	if err != nil {
-		l.FatalCtx(ctx, err.Error())
+		l.ErrorCtx(ctx, "server finished", zap.Any("error", err))
 	}
 }

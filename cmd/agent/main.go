@@ -31,6 +31,8 @@ func main() {
 		zap.String("app", "server"))
 	defer l.Sync()
 
+	l.InfoCtx(ctx, "agent running with options", zap.Any("config", conf))
+
 	store := memory.NewMetric(l)
 
 	var rt http.RoundTripper
@@ -40,8 +42,8 @@ func main() {
 	cli := &http.Client{
 		Transport: rt,
 	}
-	reporter := application.NewReporter(cli, store, "http://"+conf.GetServerAddress()+"/update/", conf.GetReportInterval())
-	agent := application.NewAgent(store, conf, l.Std())
+	reporter := application.NewReporter(l, cli, store, "http://"+conf.GetServerAddress()+"/update/", conf.GetReportInterval())
+	agent := application.NewAgent(store, conf, l)
 
 	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
 	gs.AddTask(store)
@@ -51,6 +53,6 @@ func main() {
 	err = gs.Wait(syscall.SIGTERM, syscall.SIGINT)
 
 	if err != nil {
-		l.FatalCtx(ctx, err.Error())
+		l.ErrorCtx(ctx, "agent service finished", zap.Any("error", err))
 	}
 }

@@ -2,13 +2,14 @@ package application
 
 import (
 	"context"
-	"log"
 	"runtime"
 	"time"
 
 	"github.com/konstantin-kukharev/metrics/domain"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/internal/logger"
+	"go.uber.org/zap"
 )
 
 type config interface {
@@ -21,29 +22,29 @@ type repo interface {
 }
 
 type Agent struct {
-	log          *log.Logger
+	log          *logger.Logger
 	poolInterval time.Duration
 	counter      int64
 	updater      repo
 }
 
 func (a *Agent) Run(ctx context.Context) error {
+	a.log.InfoCtx(ctx, "agent is running")
 	for {
 		select {
 		case <-time.After(a.poolInterval):
-			a.log.Print("update pool")
+			a.log.InfoCtx(ctx, "update pool")
 			var mem runtime.MemStats
 			runtime.ReadMemStats(&mem)
-			c, cncl := context.WithDeadline(ctx, time.Now().Add(1*time.Second))
+			c := context.WithoutCancel(ctx)
 			_, err := a.updater.Set(c, a.update(&mem)...)
 			if err != nil {
-				a.log.Print("error while update metrics",
-					"msg", err,
+				a.log.InfoCtx(ctx, "error while update metrics",
+					zap.String("message", err.Error()),
 				)
 			}
-			cncl()
 		case <-ctx.Done():
-			a.log.Print("agent stopped")
+			a.log.InfoCtx(ctx, "agent stopped")
 
 			return nil
 		}
@@ -103,7 +104,7 @@ func (a *Agent) update(mem *runtime.MemStats) []*entity.Metric {
 	return list
 }
 
-func NewAgent(updater repo, app config, l *log.Logger) *Agent {
+func NewAgent(updater repo, app config, l *logger.Logger) *Agent {
 	agent := new(Agent)
 	agent.poolInterval = app.GetPoolInterval()
 	agent.counter = 0
