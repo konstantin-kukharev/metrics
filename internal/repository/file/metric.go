@@ -142,7 +142,7 @@ func (ms *MetricStorage) report(ctx context.Context, req addRequest) {
 	req.response <- req.request
 }
 
-func (ms *MetricStorage) Run(ctx context.Context) error {
+func (ms *MetricStorage) initialize(ctx context.Context) error {
 	if ms.restore {
 		ms.mx.Lock()
 		ms.log.InfoCtx(ctx, "TRY TO RESTORE")
@@ -165,6 +165,31 @@ func (ms *MetricStorage) Run(ctx context.Context) error {
 		ms.mx.Unlock()
 	}
 
+	return nil
+}
+
+func (ms *MetricStorage) reporter(ctx context.Context) {
+	for {
+		select {
+		case <-time.After(ms.storeInterval):
+			c := context.WithoutCancel(ctx)
+			res := make(chan []*entity.Metric)
+			ms.report(c, addRequest{
+				request:  ms.List(c),
+				response: res,
+			})
+			<-res
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (ms *MetricStorage) Run(ctx context.Context) error {
+	if err := ms.initialize(ctx); err != nil {
+		return err
+	}
+
 	file, err := os.OpenFile(ms.sourcePath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, internal.DefaultFileStoragePermission)
 	if err != nil {
 		return err
@@ -180,22 +205,7 @@ func (ms *MetricStorage) Run(ctx context.Context) error {
 		zap.Bool("restore", ms.restore))
 
 	if ms.storeInterval != 0 {
-		go func(ctx context.Context) {
-			for {
-				select {
-				case <-time.After(ms.storeInterval):
-					c := context.WithoutCancel(ctx)
-					res := make(chan []*entity.Metric)
-					ms.report(c, addRequest{
-						request:  ms.List(c),
-						response: res,
-					})
-					<-res
-				case <-ctx.Done():
-					return
-				}
-			}
-		}(ctx)
+		go ms.reporter(ctx)
 	}
 
 	for {
