@@ -153,7 +153,7 @@ func (ms *MetricStorage) List(ctx context.Context) []*entity.Metric {
 	err := ms.do(ctx,
 		func() error {
 			rows, err := ms.store.QueryContext(ctx, "select id, mtype, delta, value from metrics")
-			if err != nil {
+			if err != nil || rows.Err() != nil {
 				close(list)
 				return nil
 			}
