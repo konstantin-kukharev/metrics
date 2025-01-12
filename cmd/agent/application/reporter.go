@@ -7,14 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/konstantin-kukharev/metrics/domain/entity"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"go.uber.org/zap"
 )
-
-type storage interface {
-	List(context.Context) []*entity.Metric
-}
 
 type Reporter struct {
 	cli *http.Client

@@ -17,15 +17,16 @@ type config interface {
 	GetPoolInterval() time.Duration
 }
 
-type repo interface {
+type storage interface {
 	Set(context.Context, ...*entity.Metric) ([]*entity.Metric, error)
+	List(context.Context) []*entity.Metric
 }
 
 type Agent struct {
 	log          *logger.Logger
 	poolInterval time.Duration
 	counter      int64
-	updater      repo
+	updater      storage
 }
 
 func (a *Agent) Run(ctx context.Context) error {
@@ -104,7 +105,7 @@ func (a *Agent) update(mem *runtime.MemStats) []*entity.Metric {
 	return list
 }
 
-func NewAgent(updater repo, app config, l *logger.Logger) *Agent {
+func NewAgent(updater storage, app config, l *logger.Logger) *Agent {
 	agent := new(Agent)
 	agent.poolInterval = app.GetPoolInterval()
 	agent.counter = 0
