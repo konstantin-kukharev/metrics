@@ -66,20 +66,18 @@ func (ms *MetricStorage) Set(ctx context.Context, es ...*entity.Metric) ([]*enti
 			return err
 		}
 
-		sqlInsert := `insert into metrics values ($1, $2 ,$3, $4) on conflict (id, mtype) do update set value = metrics.value + EXCLUDED.value, 
-			delta = EXCLUDED.delta`
+		sqlInsert, err := tx.PrepareContext(ctx, `insert into metrics values ($1, $2 ,$3, $4) on conflict (id, mtype) `+
+			`do update set value = metrics.value + EXCLUDED.value, delta = EXCLUDED.delta`)
+		if err != nil {
+			return err
+		}
+		defer sqlInsert.Close()
 
 		for _, e := range es {
-			r, err := tx.ExecContext(
+			_, err := sqlInsert.ExecContext(
 				ctx,
-				sqlInsert,
 				e.ID, e.MType, e.Delta, e.Value)
 			if err != nil {
-				_ = tx.Rollback()
-
-				return err
-			}
-			if _, err := r.RowsAffected(); err != nil {
 				_ = tx.Rollback()
 
 				return err
@@ -119,12 +117,15 @@ func (ms *MetricStorage) Set(ctx context.Context, es ...*entity.Metric) ([]*enti
 
 func (ms *MetricStorage) Get(ctx context.Context, ems ...*entity.Metric) ([]*entity.Metric, bool) {
 	err := ms.do(ctx, func() error {
+		sqlGet, err := ms.store.PrepareContext(ctx, `select id, mtype, delta, value from metrics where id = $1 AND mtype = $2`)
+		if err != nil {
+			return err
+		}
+		defer sqlGet.Close()
 		for _, e := range ems {
 			var d sql.NullInt64
 			var i sql.NullFloat64
-			row := ms.store.QueryRowContext(ctx,
-				"select id, mtype, delta, value from metrics WHERE id = $1 AND mtype = $2",
-				e.ID, e.MType)
+			row := sqlGet.QueryRowContext(ctx, e.ID, e.MType)
 			err := row.Scan(&e.ID, &e.MType, &d, &i)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
