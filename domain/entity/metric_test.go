@@ -114,7 +114,7 @@ func TestAddValue(t *testing.T) {
 	}
 
 	var d1 int64 = 123
-	var v1 float64 = 1.23
+	v1 := 1.23
 	var _ int64 = 123
 	tests := []struct {
 		name   string

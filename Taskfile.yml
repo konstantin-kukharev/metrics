@@ -14,8 +14,8 @@ tasks:
   build:
     deps: [lint, clear]
     cmds:
-      - go build -o ./.runtime/agent ./cmd/agent/*.go
-      - go build -o ./.runtime/server ./cmd/server/*.go
+      - go build -o ./.runtime/agent ./cmd/agent/*.go -race
+      - go build -o ./.runtime/server ./cmd/server/*.go -race
     silent: true
   test-cover:
     cmds:
