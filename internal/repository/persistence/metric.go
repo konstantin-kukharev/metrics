@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/jackc/pgconn"
+	"github.com/jackc/pgerrcode"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 )
@@ -31,7 +32,7 @@ type MetricStorage struct {
 	dns          string
 	store        *sql.DB
 	connRecovery chan struct{}
-	connErr      chan pgconn.PgError
+	connErr      chan *pgconn.PgError
 }
 
 func (ms *MetricStorage) do(ctx context.Context, payload func() error) error {
@@ -48,11 +49,15 @@ func (ms *MetricStorage) do(ctx context.Context, payload func() error) error {
 		return nil
 	}
 
-	// pqErr := err.(pgconn.PgError)
-	// if pgerrcode.IsConnectionException(pqErr.Code)
-	// 	ms.connErr <- pqErr
-	// 	return ms.do(ctx, payload)
-	// }
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return err
+	}
+
+	if pgerrcode.IsConnectionException(pgErr.Code) {
+		ms.connErr <- pgErr
+		return ms.do(ctx, payload)
+	}
 
 	return err
 }
@@ -326,7 +331,7 @@ func NewMetric(l *logger.Logger, dns string) *MetricStorage {
 	ms.state = stateInit
 	ms.dns = dns
 	ms.connRecovery = make(chan struct{})
-	ms.connErr = make(chan pgconn.PgError)
+	ms.connErr = make(chan *pgconn.PgError)
 
 	return ms
 }

@@ -24,6 +24,8 @@ type Reporter struct {
 	log *logger.Logger
 }
 
+var retryIntervals = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
+
 func NewReporter(l *logger.Logger, f *http.Client, s storage, url string, i time.Duration) *Reporter {
 	return &Reporter{
 		cli: f,
@@ -51,14 +53,53 @@ func (r *Reporter) report(ctx context.Context) {
 		return
 	}
 	request.Header.Add("Content-Type", "application/json")
-	resp, err := r.cli.Do(request)
-	if err != nil {
-		r.log.WarnCtx(ctx, "error while sending report",
-			zap.String("message", err.Error()),
-		)
-		return
+	r.requestRetry(ctx, request, retryIntervals...)
+}
+
+func (r *Reporter) requestRetry(ctx context.Context, req *http.Request, wait ...time.Duration) {
+	intervals := make(chan struct{})
+
+	go func(ctx context.Context, c chan<- struct{}, w []time.Duration) {
+		for _, in := range w {
+			select {
+			case <-time.After(in):
+				c <- struct{}{}
+			case <-ctx.Done():
+				close(c)
+				return
+			}
+		}
+		close(c)
+	}(ctx, intervals, wait)
+
+	for {
+		select {
+		case _, ok := <-intervals:
+			if !ok {
+				r.log.WarnCtx(ctx, "error while creating request",
+					zap.String("message", "all report retry attempts are exhausted"),
+				)
+
+				return
+			}
+			resp, err := r.cli.Do(req)
+			if err != nil {
+				r.log.WarnCtx(ctx, "error while sending report",
+					zap.String("message", err.Error()),
+				)
+
+				continue
+			}
+			resp.Body.Close()
+
+			return
+		case <-ctx.Done():
+			r.log.WarnCtx(ctx, "error while sending report",
+				zap.String("message", ctx.Err().Error()),
+			)
+			return
+		}
 	}
-	resp.Body.Close()
 }
 
 func (r *Reporter) Run(ctx context.Context) error {
