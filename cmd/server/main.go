@@ -57,6 +57,10 @@ func main() {
 		middleware.WithCompressing(
 			middleware.WithLogging(
 				handler.NewAddMetricV2(storage), l))))
+	router.Method("POST", "/updates/", middleware.WithJSONContent(
+		middleware.WithCompressing(
+			middleware.WithLogging(
+				handler.NewAddMetricV3(storage), l))))
 	router.Method("POST", "/value/", middleware.WithJSONContent(
 		middleware.WithCompressing(
 			middleware.WithLogging(

@@ -43,7 +43,7 @@ func main() {
 		Transport: rt,
 		Timeout:   10 * time.Second,
 	}
-	reporter := application.NewReporter(l, cli, store, "http://"+conf.GetServerAddress()+"/update/", conf.GetReportInterval())
+	reporter := application.NewReporter(l, cli, store, "http://"+conf.GetServerAddress()+"/updates/", conf.GetReportInterval())
 	agent := application.NewAgent(store, conf, l)
 
 	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)

@@ -35,32 +35,30 @@ func NewReporter(l *logger.Logger, f *http.Client, s storage, url string, i time
 }
 
 func (r *Reporter) report(ctx context.Context) {
-	for _, m := range r.s.List(ctx) {
-		b, err := json.Marshal(m)
-		if err != nil {
-			r.log.WarnCtx(ctx, "error while marshaling metric",
-				zap.String("message", err.Error()),
-			)
-			continue
-		}
-
-		request, err := http.NewRequestWithContext(ctx, http.MethodPost, r.url, bytes.NewBuffer(b))
-		if err != nil {
-			r.log.WarnCtx(ctx, "error while creating request",
-				zap.String("message", err.Error()),
-			)
-			continue
-		}
-		request.Header.Add("Content-Type", "application/json")
-		resp, err := r.cli.Do(request)
-		if err != nil {
-			r.log.WarnCtx(ctx, "error while sending report",
-				zap.String("message", err.Error()),
-			)
-			continue
-		}
-		resp.Body.Close()
+	b, err := json.Marshal(r.s.List(ctx))
+	if err != nil {
+		r.log.WarnCtx(ctx, "error while marshaling metric",
+			zap.String("message", err.Error()),
+		)
+		return
 	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, r.url, bytes.NewBuffer(b))
+	if err != nil {
+		r.log.WarnCtx(ctx, "error while creating request",
+			zap.String("message", err.Error()),
+		)
+		return
+	}
+	request.Header.Add("Content-Type", "application/json")
+	resp, err := r.cli.Do(request)
+	if err != nil {
+		r.log.WarnCtx(ctx, "error while sending report",
+			zap.String("message", err.Error()),
+		)
+		return
+	}
+	resp.Body.Close()
 }
 
 func (r *Reporter) Run(ctx context.Context) error {
