@@ -41,6 +41,7 @@ func main() {
 	rt = roundtripper.NewCompress(rt)
 	cli := &http.Client{
 		Transport: rt,
+		Timeout:   10 * time.Second,
 	}
 	reporter := application.NewReporter(l, cli, store, "http://"+conf.GetServerAddress()+"/update/", conf.GetReportInterval())
 	agent := application.NewAgent(store, conf, l)

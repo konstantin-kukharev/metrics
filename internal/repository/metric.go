@@ -9,7 +9,7 @@ import (
 
 type Metric interface {
 	Set(context.Context, ...*entity.Metric) ([]*entity.Metric, error)
-	Get(context.Context, *entity.Metric) (*entity.Metric, bool)
+	Get(context.Context, ...*entity.Metric) ([]*entity.Metric, bool)
 	List(context.Context) []*entity.Metric
 	graceful.Task
 }

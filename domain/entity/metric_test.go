@@ -21,13 +21,13 @@ func TestNewMetric(t *testing.T) {
 			name:   "valid gauge",
 			mtype:  domain.MetricGauge,
 			value:  "1.23",
-			expect: &Metric{ID: "valid gauge", MType: domain.MetricGauge, Value: &cv},
+			expect: &Metric{ID: "valid gauge", MType: domain.MetricGauge, MValue: MValue{Value: &cv}},
 		},
 		{
 			name:   "valid counter",
 			mtype:  domain.MetricCounter,
 			value:  "123",
-			expect: &Metric{ID: "valid counter", MType: domain.MetricCounter, Delta: &iv},
+			expect: &Metric{ID: "valid counter", MType: domain.MetricCounter, MValue: MValue{Delta: &iv}},
 		},
 		{
 			name:   "invalid gauge",

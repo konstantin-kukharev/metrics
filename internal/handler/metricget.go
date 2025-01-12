@@ -10,7 +10,7 @@ import (
 )
 
 type metricReader interface {
-	Get(context.Context, *entity.Metric) (*entity.Metric, bool)
+	Get(context.Context, ...*entity.Metric) ([]*entity.Metric, bool)
 }
 
 type MetricGet struct {
@@ -45,17 +45,24 @@ func (s *MetricGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if v, ok := s.service.Get(r.Context(), data); ok {
-		res := v.GetValue()
-		_, err := w.Write([]byte(res))
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-
-		w.WriteHeader(http.StatusOK)
+	v, ok := s.service.Get(r.Context(), data)
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if len(v) != 1 {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
-	w.WriteHeader(http.StatusNotFound)
+	res := v[0].GetValue()
+	_, err = w.Write([]byte(res))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func NewGetMetric(srv metricReader) *MetricGet {

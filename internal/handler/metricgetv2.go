@@ -56,17 +56,21 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	if len(m) != 1 {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	result := &entity.Metric{
-		ID:    m.ID,
-		MType: m.MType,
+		ID:    m[0].ID,
+		MType: m[0].MType,
 	}
 
-	if m.Delta != nil {
-		result.Delta = m.Delta
+	if m[0].Delta != nil {
+		result.Delta = m[0].Delta
 	}
-	if m.Value != nil {
-		result.Value = m.Value
+	if m[0].Value != nil {
+		result.Value = m[0].Value
 	}
 
 	resultJSON, err := json.Marshal(result)

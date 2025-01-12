@@ -71,21 +71,27 @@ func (ms *MetricStorage) Set(ctx context.Context, es ...*entity.Metric) ([]*enti
 			if ok {
 				return resp, nil
 			}
-			return nil, fmt.Errorf("error while adding ")
+			return nil, fmt.Errorf("error while adding")
 		}
 	}
 }
 
-func (ms *MetricStorage) Get(ctx context.Context, m *entity.Metric) (*entity.Metric, bool) {
+func (ms *MetricStorage) Get(ctx context.Context, ems ...*entity.Metric) ([]*entity.Metric, bool) {
 	ms.mx.RLock()
 	defer ms.mx.RUnlock()
 
-	k := key{t: m.MType, n: m.ID}
-	if v, ok := ms.store[k]; ok {
-		return v, ok
+	result := make([]*entity.Metric, 0, len(ems))
+
+	for _, m := range ems {
+		k := key{t: m.MType, n: m.ID}
+		if v, ok := ms.store[k]; ok {
+			result = append(result, v)
+		} else {
+			return result, false
+		}
 	}
 
-	return m, false
+	return result, true
 }
 
 func (ms *MetricStorage) List(ctx context.Context) []*entity.Metric {

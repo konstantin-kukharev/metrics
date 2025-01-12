@@ -7,13 +7,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/konstantin-kukharev/metrics/cmd/server/application"
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/internal/graceful"
+	"github.com/konstantin-kukharev/metrics/internal/handler"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
+	"github.com/konstantin-kukharev/metrics/internal/middleware"
 	"github.com/konstantin-kukharev/metrics/internal/repository"
 	"github.com/konstantin-kukharev/metrics/internal/repository/file"
 	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
+	"github.com/konstantin-kukharev/metrics/internal/repository/persistence"
 	"go.uber.org/zap"
 )
 
@@ -37,13 +41,29 @@ func main() {
 	var storage repository.Metric
 	switch {
 	case conf.GetDatabaseDNS() != "":
+		storage = persistence.NewMetric(l, conf.GetDatabaseDNS())
 	case conf.FileStoragePath != "":
 		storage = file.NewMetric(l, conf)
 	default:
 		storage = memory.NewMetric(l)
 	}
 
-	server := application.NewServer(l, storage, conf)
+	router := chi.NewRouter()
+	router.Method("POST", "/update/{type}/{name}/{val}", middleware.WithLogging(handler.NewAddMetric(storage), l))
+	router.Method("GET", "/value/{type}/{name}", middleware.WithLogging(handler.NewGetMetric(storage), l))
+	router.Method("GET", "/", middleware.WithCompressing(middleware.WithLogging(handler.NewIndexMetric(storage), l)))
+
+	router.Method("POST", "/update/", middleware.WithJSONContent(
+		middleware.WithCompressing(
+			middleware.WithLogging(
+				handler.NewAddMetricV2(storage), l))))
+	router.Method("POST", "/value/", middleware.WithJSONContent(
+		middleware.WithCompressing(
+			middleware.WithLogging(
+				handler.NewMetricGetV2(storage), l))))
+
+	router.Method("GET", "/ping", middleware.WithLogging(handler.NewPing(conf.GetDatabaseDNS(), l), l))
+	server := application.NewServer(l, router, conf)
 
 	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
 	gs.AddTask(storage)
