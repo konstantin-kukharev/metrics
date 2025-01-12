@@ -39,13 +39,11 @@ func main() {
 	l.InfoCtx(ctx, "server running with options", zap.Any("config", conf))
 
 	var storage repository.Metric
-	switch {
-	case conf.GetDatabaseDNS() != "":
+	storage = memory.NewMetric(l)
+	if conf.GetDatabaseDNS() != "" {
 		storage = persistence.NewMetric(l, conf.GetDatabaseDNS())
-	case conf.FileStoragePath != "":
+	} else if conf.FileStoragePath != "" {
 		storage = file.NewMetric(l, conf)
-	default:
-		storage = memory.NewMetric(l)
 	}
 
 	router := chi.NewRouter()
