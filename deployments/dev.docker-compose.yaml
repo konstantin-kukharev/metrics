@@ -13,8 +13,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    # volumes:
-    #   - metrics:/var/lib/postgresql/data
+    volumes:
+      - metrics:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     restart: unless-stopped

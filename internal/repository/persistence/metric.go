@@ -58,6 +58,8 @@ func (ms *MetricStorage) do(ctx context.Context, payload func() error) error {
 }
 
 func (ms *MetricStorage) Set(ctx context.Context, es ...*entity.Metric) ([]*entity.Metric, error) {
+	list := make(chan []*entity.Metric, 1)
+
 	err := ms.do(ctx, func() error {
 		tx, err := ms.store.BeginTx(ctx, &sql.TxOptions{
 			Isolation: sql.LevelSerializable,
@@ -67,11 +69,13 @@ func (ms *MetricStorage) Set(ctx context.Context, es ...*entity.Metric) ([]*enti
 		}
 
 		sqlInsert, err := tx.PrepareContext(ctx, `insert into metrics values ($1, $2 ,$3, $4) on conflict (id, mtype) `+
-			`do update set value = metrics.value + EXCLUDED.value, delta = EXCLUDED.delta`)
+			`do update set value = EXCLUDED.value, delta = metrics.delta + EXCLUDED.delta`)
 		if err != nil {
 			return err
 		}
 		defer sqlInsert.Close()
+
+		keysForSelect := make(map[string]string)
 
 		for _, e := range es {
 			_, err := sqlInsert.ExecContext(
@@ -83,18 +87,29 @@ func (ms *MetricStorage) Set(ctx context.Context, es ...*entity.Metric) ([]*enti
 				return err
 			}
 
+			keysForSelect[e.ID] = e.MType
+		}
+
+		results := make([]*entity.Metric, 0)
+
+		for n, t := range keysForSelect {
 			row := tx.QueryRowContext(ctx,
 				"select id, mtype, delta, value from metrics where id = $1 AND mtype = $2",
-				e.ID, e.MType)
+				n, t)
+			ne := new(entity.Metric)
+			ne.ID = n
+			ne.MType = t
 			var d sql.NullInt64
 			var i sql.NullFloat64
-			err = row.Scan(&e.ID, &e.MType, &d, &i)
-			e.SetValue(d, i)
+			err = row.Scan(&ne.ID, &ne.MType, &d, &i)
+			ne.SetValue(d, i)
 			if err != nil {
 				_ = tx.Rollback()
 
 				return err
 			}
+
+			results = append(results, ne)
 		}
 
 		err = tx.Commit()
@@ -104,15 +119,18 @@ func (ms *MetricStorage) Set(ctx context.Context, es ...*entity.Metric) ([]*enti
 			return err
 		}
 
+		list <- results
 		return nil
 	})
 
 	if err != nil {
 		ms.log.ErrorCtx(ctx, "error update", zap.Any("error", err))
+		close(list)
+
 		return nil, err
 	}
 
-	return es, nil
+	return <-list, nil
 }
 
 func (ms *MetricStorage) Get(ctx context.Context, ems ...*entity.Metric) ([]*entity.Metric, bool) {

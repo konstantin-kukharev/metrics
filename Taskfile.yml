@@ -21,6 +21,7 @@ tasks:
     deps: [build]
     cmds:
       - go test -cover ./... > ./.runtime/test.log
+      # - docker-compose -f ./deployments/dev.docker-compose.yaml restart postgres
       # - metricstest -test.v -test.run=^TestIteration1$ -binary-path=./.runtime/server >> ./.runtime/test.log
       # - metricstest -test.v -test.run=^TestIteration2[AB]*$ -source-path=\. -agent-binary-path=./.runtime/agent >> ./.runtime/test.log
       # - metricstest -test.v -test.run=^TestIteration3[AB]*$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server >> ./.runtime/test.log
@@ -31,7 +32,7 @@ tasks:
       # - metricstest -test.v -test.run=^TestIteration8$ -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
       # - metricstest -test.v -test.run=^TestIteration9$ -file-storage-path=./BACKUP -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 >> ./.runtime/test.log
       # - metricstest -test.v -test.run=^TestIteration10[B]$ -file-storage-path=./BACKUP -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 -database-dsn='postgres://localhost:postgres@postgres:5432/postgres?sslmode=disable' >> ./.runtime/test.log
-      # - metricstest -test.v -test.run=^TestIteration11$ -file-storage-path=./BACKUP -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 -database-dsn='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' >> ./.runtime/test.log
+      - metricstest -test.v -test.run=^TestIteration11$ -file-storage-path=./BACKUP -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 -database-dsn='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' >> ./.runtime/test.log
       - metricstest -test.v -test.run=^TestIteration12$ -file-storage-path=./BACKUP -source-path=\. -agent-binary-path=./.runtime/agent -binary-path=./.runtime/server -server-port=8080 -database-dsn='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' >> ./.runtime/test.log
   run-dev:
     cmds:
@@ -39,3 +40,5 @@ tasks:
   stop-dev:
     cmds:
       - docker-compose -f ./deployments/dev.docker-compose.yaml down --remove-orphans
+      - docker volume prune --force
+      - docker volume rm metrics --force

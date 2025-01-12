@@ -61,10 +61,6 @@ func (s *MetricAddV3) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if len(res) != 1 {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 
 	resultJSON, err := json.Marshal(res)
 	if err != nil {
