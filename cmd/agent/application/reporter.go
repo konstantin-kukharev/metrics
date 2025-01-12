@@ -37,26 +37,10 @@ func NewReporter(l *logger.Logger, f *http.Client, s storage, url string, i time
 }
 
 func (r *Reporter) report(ctx context.Context) {
-	b, err := json.Marshal(r.s.List(ctx))
-	if err != nil {
-		r.log.WarnCtx(ctx, "error while marshaling metric",
-			zap.String("message", err.Error()),
-		)
-		return
-	}
-
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, r.url, bytes.NewBuffer(b))
-	if err != nil {
-		r.log.WarnCtx(ctx, "error while creating request",
-			zap.String("message", err.Error()),
-		)
-		return
-	}
-	request.Header.Add("Content-Type", "application/json")
-	r.requestRetry(ctx, request, retryIntervals...)
+	r.requestRetry(ctx, retryIntervals...)
 }
 
-func (r *Reporter) requestRetry(ctx context.Context, req *http.Request, wait ...time.Duration) {
+func (r *Reporter) requestRetry(ctx context.Context, wait ...time.Duration) {
 	intervals := make(chan struct{})
 
 	go func(ctx context.Context, c chan<- struct{}, w []time.Duration) {
@@ -82,7 +66,23 @@ func (r *Reporter) requestRetry(ctx context.Context, req *http.Request, wait ...
 
 				return
 			}
-			resp, err := r.cli.Do(req)
+			b, err := json.Marshal(r.s.List(ctx))
+			if err != nil {
+				r.log.WarnCtx(ctx, "error while marshaling metric",
+					zap.String("message", err.Error()),
+				)
+				return
+			}
+
+			request, err := http.NewRequestWithContext(ctx, http.MethodPost, r.url, bytes.NewBuffer(b))
+			if err != nil {
+				r.log.WarnCtx(ctx, "error while creating request",
+					zap.String("message", err.Error()),
+				)
+				return
+			}
+			request.Header.Add("Content-Type", "application/json")
+			resp, err := r.cli.Do(request)
 			if err != nil {
 				r.log.WarnCtx(ctx, "error while sending report",
 					zap.String("message", err.Error()),
