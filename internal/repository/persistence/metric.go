@@ -275,7 +275,7 @@ func (ms *MetricStorage) initialize() error {
 		CREATE TABLE IF NOT EXISTS metrics (
 			id VARCHAR NOT NULL,
 			mtype mtype NOT NULL,
-			delta INTEGER,
+			delta BIGINT,
 			value DOUBLE PRECISION
 		);
 

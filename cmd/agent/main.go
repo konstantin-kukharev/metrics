@@ -18,6 +18,8 @@ import (
 	"github.com/konstantin-kukharev/metrics/internal/roundtripper"
 )
 
+var retryDurations = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
+
 func main() {
 	conf := settings.New().WithFlag().WithEnv()
 
@@ -37,8 +39,9 @@ func main() {
 
 	var rt http.RoundTripper
 	rt = http.DefaultTransport
-	rt = roundtripper.NewLogging(rt, l)
+	rt = roundtripper.NewRetry(rt, retryDurations...)
 	rt = roundtripper.NewCompress(rt)
+	rt = roundtripper.NewLogging(rt, l)
 	cli := &http.Client{
 		Transport: rt,
 		Timeout:   10 * time.Second,
