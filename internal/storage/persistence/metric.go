@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"database/sql"
-
-	"github.com/pressly/goose/v3"
 	"go.uber.org/zap"
 
+	"github.com/SergeiSkv/goose/v3"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 )
@@ -31,7 +30,7 @@ type MetricStorage struct {
 	log   *logger.Logger
 
 	dns          string
-	store        *sql.DB
+	store        *pgx.Conn
 	connRecovery chan struct{}
 	connErr      chan *pgconn.PgError
 }
@@ -64,57 +63,54 @@ func (ms *MetricStorage) do(ctx context.Context, payload func() error) error {
 }
 
 func (ms *MetricStorage) Set(ctx context.Context, es ...*entity.Metric) ([]*entity.Metric, error) {
+	query := `insert into metrics (id, mtype, delta, value) values (@id, @mtype ,@delta, @value) ` +
+		`on conflict (id, mtype) do update set value = EXCLUDED.value, delta = metrics.delta + EXCLUDED.delta ` +
+		`returning id, mtype, delta, value`
+
 	list := make(chan []*entity.Metric, 1)
 
 	err := ms.do(ctx, func() error {
-		tx, err := ms.store.BeginTx(ctx, &sql.TxOptions{
-			Isolation: sql.LevelSerializable,
-		})
-		if err != nil {
-			return err
-		}
+		keysForSelect := make(map[struct {
+			k entity.MType
+			t string
+		}]*entity.Metric)
 
-		sqlInsert, err := tx.PrepareContext(ctx, `insert into metrics values ($1, $2 ,$3, $4) `+
-			`on conflict (id, mtype) do update set value = EXCLUDED.value, delta = metrics.delta + EXCLUDED.delta `+
-			`returning id, mtype, delta, value`)
-		if err != nil {
-			return err
-		}
-		defer sqlInsert.Close()
-		keysForSelect := make(map[struct{ k, t string }]*entity.Metric)
-
+		batch := &pgx.Batch{}
 		for _, e := range es {
-			row := sqlInsert.QueryRowContext(
-				ctx,
-				e.ID, e.MType, e.Delta, e.Value)
+			args := pgx.NamedArgs{
+				"id": e.ID, "mtype": e.MType,
+				"delta": e.Delta, "value": e.Value,
+			}
+			batch.Queue(query, args)
 
-			ne := new(entity.Metric)
-			err := row.Scan(&ne.ID, &ne.MType, &ne.Delta, &ne.Value)
-			if err != nil {
-				_ = tx.Rollback()
+			keysForSelect[struct {
+				k entity.MType
+				t string
+			}{e.MType, e.ID}] = &entity.Metric{}
+		}
 
+		results := ms.store.SendBatch(ctx, batch)
+		defer results.Close()
+
+		for c := 0; c < len(es); c++ {
+			tmp := &entity.Metric{}
+			row := results.QueryRow()
+			if err := row.Scan(&tmp.ID, &tmp.MType, &tmp.Delta, &tmp.Value); err != nil {
 				return err
 			}
 
 			keysForSelect[struct {
-				k string
+				k entity.MType
 				t string
-			}{ne.ID, ne.MType}] = ne
+			}{tmp.MType, tmp.ID}] = tmp
 		}
 
-		err = tx.Commit()
-		if err != nil {
-			_ = tx.Rollback()
-
-			return err
+		ret := make([]*entity.Metric, 0, len(es))
+		for _, k := range keysForSelect {
+			ret = append(ret, k)
 		}
 
-		results := make([]*entity.Metric, 0, len(keysForSelect))
-		for _, value := range keysForSelect {
-			results = append(results, value)
-		}
-
-		list <- results
+		list <- ret
 		return nil
 	})
 
@@ -130,19 +126,20 @@ func (ms *MetricStorage) Set(ctx context.Context, es ...*entity.Metric) ([]*enti
 
 func (ms *MetricStorage) Get(ctx context.Context, ems ...*entity.Metric) ([]*entity.Metric, bool) {
 	err := ms.do(ctx, func() error {
-		sqlGet, err := ms.store.PrepareContext(ctx, `select id, mtype, delta, value from metrics where id = $1 AND mtype = $2`)
-		if err != nil {
-			return err
-		}
-		defer sqlGet.Close()
+		query := `select id, mtype, delta, value from metrics where id = @id AND mtype = @mtype`
+		batch := &pgx.Batch{}
 		for _, e := range ems {
-			row := sqlGet.QueryRowContext(ctx, e.ID, e.MType)
+			args := pgx.NamedArgs{"id": e.ID, "mtype": e.MType}
+			batch.Queue(query, args)
+		}
+
+		results := ms.store.SendBatch(ctx, batch)
+		defer results.Close()
+
+		for _, e := range ems {
+			row := results.QueryRow()
 			err := row.Scan(&e.ID, &e.MType, &e.Delta, &e.Value)
 			if err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					return err
-				}
-
 				return fmt.Errorf("can`t get metric: %s", err.Error())
 			}
 		}
@@ -159,14 +156,16 @@ func (ms *MetricStorage) Get(ctx context.Context, ems ...*entity.Metric) ([]*ent
 
 func (ms *MetricStorage) List(ctx context.Context) []*entity.Metric {
 	list := make(chan []*entity.Metric, 1)
+	query := "select id, mtype, delta, value from metrics"
 
 	err := ms.do(ctx,
 		func() error {
-			rows, err := ms.store.QueryContext(ctx, "select id, mtype, delta, value from metrics")
+			rows, err := ms.store.Query(ctx, query)
 			if err != nil || rows.Err() != nil {
 				close(list)
 				return nil
 			}
+			defer rows.Close()
 
 			vals := make([]*entity.Metric, 0)
 			for rows.Next() {
@@ -196,13 +195,13 @@ func (ms *MetricStorage) List(ctx context.Context) []*entity.Metric {
 }
 
 func (ms *MetricStorage) connect(ctx context.Context) error {
-	db, err := sql.Open("pgx", ms.dns)
+	db, err := pgx.Connect(context.Background(), ms.dns)
 	if err != nil {
 		return err
 	}
 
 	ms.store = db
-	err = ms.store.PingContext(ctx)
+	err = ms.store.Ping(ctx)
 	if err != nil {
 		return err
 	}
@@ -234,7 +233,7 @@ func (ms *MetricStorage) recoverConnection(ctx context.Context, wait ...time.Dur
 			if !ok {
 				return fmt.Errorf("all db recover attempts are exhausted")
 			}
-			if err := ms.store.PingContext(ctx); err != nil {
+			if err := ms.store.Ping(ctx); err != nil {
 				ms.log.ErrorCtx(ctx, "error while recovering db connection", zap.Any("error", err))
 				continue
 			}
@@ -268,7 +267,7 @@ func (ms *MetricStorage) Run(ctx context.Context) error {
 		return fmt.Errorf("can`t start db storage")
 	}
 
-	defer ms.store.Close()
+	defer ms.store.Close(ctx)
 
 	if err := ms.initialize(); err != nil {
 		return fmt.Errorf("can`t init db storage")
@@ -299,12 +298,11 @@ func (ms *MetricStorage) Run(ctx context.Context) error {
 }
 
 func NewMetric(l *logger.Logger, dns string) *MetricStorage {
-	ms := new(MetricStorage)
-	ms.log = l
-	ms.state = stateInit
-	ms.dns = dns
-	ms.connRecovery = make(chan struct{})
-	ms.connErr = make(chan *pgconn.PgError)
-
-	return ms
+	return &MetricStorage{
+		log:          l,
+		state:        stateInit,
+		dns:          dns,
+		connRecovery: make(chan struct{}),
+		connErr:      make(chan *pgconn.PgError),
+	}
 }

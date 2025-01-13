@@ -8,10 +8,12 @@ WORKDIR /app
 ADD ../ ./
 
 # Build
-RUN CGO_ENABLED=0 go build -gcflags="all=-N -l" -o ./application ./cmd/$APPLICATION_NAME
+RUN go build -o ./application ./cmd/$APPLICATION_NAME
 
 ## Runner
 FROM scratch AS dev-runner
 
 WORKDIR /
 COPY --from=dev-builder /app/application /application
+
+ENTRYPOINT [ "/application" ]

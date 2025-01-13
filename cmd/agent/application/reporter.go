@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/konstantin-kukharev/metrics/internal/logger"
+	"github.com/konstantin-kukharev/metrics/internal/roundtripper"
 	"go.uber.org/zap"
 )
 
@@ -19,9 +20,19 @@ type Reporter struct {
 	log *logger.Logger
 }
 
-func NewReporter(l *logger.Logger, f *http.Client, s storage, url string, i time.Duration) *Reporter {
+func NewReporter(l *logger.Logger, s storage, url string, i time.Duration) *Reporter {
+	var rt http.RoundTripper
+	rt = http.DefaultTransport
+	rt = roundtripper.NewRetry(rt, roundtripper.DefaultRetryDurations...)
+	rt = roundtripper.NewCompress(rt)
+	rt = roundtripper.NewLogging(rt, l)
+	cli := &http.Client{
+		Transport: rt,
+		Timeout:   10 * time.Second,
+	}
+
 	return &Reporter{
-		cli: f,
+		cli: cli,
 		url: url,
 		s:   s,
 		i:   i,

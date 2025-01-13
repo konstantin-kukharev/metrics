@@ -4,7 +4,6 @@ import (
 	"flag"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/konstantin-kukharev/metrics/internal"
 )
@@ -17,33 +16,12 @@ type Config struct {
 	DatabaseDNS     string // адрес базы данных, если не указана, то используется по умолчанию
 }
 
-func (c *Config) GetAddress() string {
-	return c.Address
-}
-
-func (c *Config) GetStoreInterval() time.Duration {
-	return time.Duration(c.StoreInterval * int(time.Second))
-}
-
-func (c *Config) GetFileStoragePath() string {
-	return c.FileStoragePath
-}
-
-func (c *Config) GetRestore() bool {
-	return c.Restore
-}
-
-func (c *Config) GetDatabaseDNS() string {
-	return c.DatabaseDNS
-}
-
 func NewConfig() *Config {
 	c := &Config{
 		Address:         internal.DefaultServerAddr,
 		StoreInterval:   internal.DefaultServerStoreInterval,
 		FileStoragePath: internal.DefaultFileStoragePath,
 		Restore:         internal.DefaultRestore,
-		DatabaseDNS:     internal.DefaultDatabaseDNS,
 	}
 
 	return c
@@ -53,8 +31,8 @@ func (c *Config) WithFlag() {
 	flag.StringVar(&c.Address, "a", internal.DefaultServerAddr, "server address")
 	flag.IntVar(&c.StoreInterval, "i", internal.DefaultServerStoreInterval, "interval to store data on FS")
 	flag.StringVar(&c.FileStoragePath, "f", internal.DefaultFileStoragePath, "file path to store data")
-	flag.BoolVar(&c.Restore, "r", internal.DefaultRestore, "file path to store data")
-	flag.StringVar(&c.DatabaseDNS, "d", internal.DefaultDatabaseDNS, "database dns path")
+	flag.BoolVar(&c.Restore, "r", internal.DefaultRestore, "is restore file data")
+	flag.StringVar(&c.DatabaseDNS, "d", "", "database dns path")
 	flag.Parse()
 }
 

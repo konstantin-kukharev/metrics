@@ -7,13 +7,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/konstantin-kukharev/metrics/cmd/server/application"
 	"github.com/konstantin-kukharev/metrics/cmd/server/settings"
 	"github.com/konstantin-kukharev/metrics/internal/graceful"
-	"github.com/konstantin-kukharev/metrics/internal/handler"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
-	"github.com/konstantin-kukharev/metrics/internal/middleware"
 	"github.com/konstantin-kukharev/metrics/internal/storage"
 	"github.com/konstantin-kukharev/metrics/internal/storage/file"
 	"github.com/konstantin-kukharev/metrics/internal/storage/memory"
@@ -40,32 +37,13 @@ func main() {
 
 	var s storage.Metric
 	s = memory.NewMetric(l)
-	if conf.GetDatabaseDNS() != "" {
-		s = persistence.NewMetric(l, conf.GetDatabaseDNS())
+	if conf.DatabaseDNS != "" {
+		s = persistence.NewMetric(l, conf.DatabaseDNS)
 	} else if conf.FileStoragePath != "" {
-		s = file.NewMetric(l, conf)
+		s = file.NewMetric(l, conf.Restore, conf.FileStoragePath, time.Duration(conf.StoreInterval*int(time.Second)))
 	}
 
-	router := chi.NewRouter()
-	router.Method("POST", "/update/{type}/{name}/{val}", middleware.WithLogging(handler.NewAddMetric(s), l))
-	router.Method("GET", "/value/{type}/{name}", middleware.WithLogging(handler.NewGetMetric(s), l))
-	router.Method("GET", "/", middleware.WithCompressing(middleware.WithLogging(handler.NewIndexMetric(s), l)))
-
-	router.Method("POST", "/update/", middleware.WithJSONContent(
-		middleware.WithCompressing(
-			middleware.WithLogging(
-				handler.NewAddMetricV2(s), l))))
-	router.Method("POST", "/updates/", middleware.WithJSONContent(
-		middleware.WithCompressing(
-			middleware.WithLogging(
-				handler.NewAddMetricV3(s), l))))
-	router.Method("POST", "/value/", middleware.WithJSONContent(
-		middleware.WithCompressing(
-			middleware.WithLogging(
-				handler.NewMetricGetV2(s), l))))
-
-	router.Method("GET", "/ping", middleware.WithLogging(handler.NewPing(conf.GetDatabaseDNS(), l), l))
-	server := application.NewServer(l, router, conf)
+	server := application.NewServer(l, s, conf.Address, conf.DatabaseDNS)
 
 	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
 	gs.AddTask(s)

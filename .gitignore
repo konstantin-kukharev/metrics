@@ -29,6 +29,7 @@ __debug*
 
 # workdir
 .runtime
+deployments/.env
 
 metricstest
 BACKUP

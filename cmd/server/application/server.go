@@ -5,7 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/konstantin-kukharev/metrics/internal/handler"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
+	"github.com/konstantin-kukharev/metrics/internal/middleware"
+	"github.com/konstantin-kukharev/metrics/internal/storage"
 
 	"go.uber.org/zap"
 )
@@ -15,22 +19,43 @@ type ApplicationConfig interface {
 }
 
 type Server struct {
-	config ApplicationConfig
-	log    *logger.Logger
-	server *http.Server
+	address string
+	log     *logger.Logger
+	server  *http.Server
 }
 
 func NewServer(
 	l *logger.Logger,
-	router http.Handler,
-	app ApplicationConfig) *Server {
+	s storage.Metric,
+	address string,
+	databaseDNS string) *Server {
+	router := chi.NewRouter()
+	router.Method("POST", "/update/{type}/{name}/{val}", middleware.WithLogging(handler.NewAddMetric(s), l))
+	router.Method("GET", "/value/{type}/{name}", middleware.WithLogging(handler.NewGetMetric(s), l))
+	router.Method("GET", "/", middleware.WithCompressing(middleware.WithLogging(handler.NewIndexMetric(s), l)))
+
+	router.Method("POST", "/update/", middleware.WithJSONContent(
+		middleware.WithCompressing(
+			middleware.WithLogging(
+				handler.NewAddMetricV2(s), l))))
+	router.Method("POST", "/updates/", middleware.WithJSONContent(
+		middleware.WithCompressing(
+			middleware.WithLogging(
+				handler.NewAddMetricV3(s), l))))
+	router.Method("POST", "/value/", middleware.WithJSONContent(
+		middleware.WithCompressing(
+			middleware.WithLogging(
+				handler.NewMetricGetV2(s), l))))
+
+	router.Method("GET", "/ping", middleware.WithLogging(handler.NewPing(databaseDNS, l), l))
+
 	return &Server{
-		config: app,
-		log:    l,
+		address: address,
+		log:     l,
 		server: &http.Server{
 			ErrorLog:          l.Std(),
 			Handler:           router,
-			Addr:              app.GetAddress(),
+			Addr:              address,
 			ReadHeaderTimeout: 1 * time.Second,
 		},
 	}
@@ -51,7 +76,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}(ctx)
 
 	s.log.InfoCtx(ctx, "http server running",
-		zap.String("address", s.config.GetAddress()),
+		zap.String("address", s.address),
 	)
 	return s.server.ListenAndServe()
 }

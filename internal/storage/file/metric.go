@@ -23,13 +23,8 @@ const (
 )
 
 type key struct {
-	t, n string
-}
-
-type config interface {
-	GetStoreInterval() time.Duration
-	GetFileStoragePath() string
-	GetRestore() bool
+	t entity.MType
+	n string
 }
 
 type addRequest struct {
@@ -109,7 +104,10 @@ func (ms *MetricStorage) List(ctx context.Context) []*entity.Metric {
 func (ms *MetricStorage) update(_ context.Context, req addRequest) {
 	ms.mx.Lock()
 	defer ms.mx.Unlock()
-	defer close(req.response)
+	keysForSelect := make(map[struct {
+		k entity.MType
+		t string
+	}]*entity.Metric)
 
 	for _, m := range req.request {
 		k := key{t: m.MType, n: m.ID}
@@ -118,9 +116,19 @@ func (ms *MetricStorage) update(_ context.Context, req addRequest) {
 			m.Aggregate(res)
 		}
 		ms.store[k] = m
+		keysForSelect[struct {
+			k entity.MType
+			t string
+		}{m.MType, m.ID}] = m
 	}
 
-	req.response <- req.request
+	result := make([]*entity.Metric, 0, len(keysForSelect))
+	for _, m := range keysForSelect {
+		result = append(result, m)
+	}
+
+	req.response <- result
+	close(req.response)
 }
 
 func (ms *MetricStorage) report(ctx context.Context, req addRequest) {
@@ -251,16 +259,15 @@ func (ms *MetricStorage) Run(ctx context.Context) error {
 	}
 }
 
-func NewMetric(l *logger.Logger, conf config) *MetricStorage {
-	ms := new(MetricStorage)
-	ms.log = l
-	ms.store = map[key]*entity.Metric{}
-	ms.mx = &sync.RWMutex{}
-	ms.add = make(chan addRequest)
-	ms.state = stateInit
-	ms.restore = conf.GetRestore()
-	ms.sourcePath = conf.GetFileStoragePath()
-	ms.storeInterval = conf.GetStoreInterval()
-
-	return ms
+func NewMetric(l *logger.Logger, restore bool, sourcePath string, storeInterval time.Duration) *MetricStorage {
+	return &MetricStorage{
+		log:           l,
+		store:         make(map[key]*entity.Metric),
+		mx:            &sync.RWMutex{},
+		add:           make(chan addRequest),
+		state:         stateInit,
+		restore:       restore,
+		sourcePath:    sourcePath,
+		storeInterval: storeInterval,
+	}
 }

@@ -5,17 +5,11 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/konstantin-kukharev/metrics/domain"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	"github.com/konstantin-kukharev/metrics/internal"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"go.uber.org/zap"
 )
-
-type config interface {
-	GetServerAddress() string
-	GetPoolInterval() time.Duration
-}
 
 type storage interface {
 	Set(context.Context, ...*entity.Metric) ([]*entity.Metric, error)
@@ -87,7 +81,7 @@ func (a *Agent) update(mem *runtime.MemStats) []*entity.Metric {
 	} {
 		metric := &entity.Metric{
 			ID:    name,
-			MType: domain.MetricGauge,
+			MType: entity.MetricGauge,
 		}
 		metric.Value = &val
 		list = append(list, metric)
@@ -96,7 +90,7 @@ func (a *Agent) update(mem *runtime.MemStats) []*entity.Metric {
 	a.counter += 1
 	cnt := &entity.Metric{
 		ID:    "PollCount",
-		MType: domain.MetricCounter,
+		MType: entity.MetricCounter,
 	}
 	cnt.Delta = &a.counter
 
@@ -105,9 +99,9 @@ func (a *Agent) update(mem *runtime.MemStats) []*entity.Metric {
 	return list
 }
 
-func NewAgent(updater storage, app config, l *logger.Logger) *Agent {
+func NewAgent(updater storage, poolInterval time.Duration, l *logger.Logger) *Agent {
 	agent := new(Agent)
-	agent.poolInterval = app.GetPoolInterval()
+	agent.poolInterval = poolInterval
 	agent.counter = 0
 	agent.updater = updater
 	agent.log = l

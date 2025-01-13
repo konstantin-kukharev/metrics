@@ -16,7 +16,8 @@ const (
 )
 
 type key struct {
-	t, n string
+	t entity.MType
+	n string
 }
 
 type addRequest struct {
@@ -127,12 +128,11 @@ func (ms *MetricStorage) Run(ctx context.Context) error {
 }
 
 func NewMetric(l *logger.Logger) *MetricStorage {
-	ms := new(MetricStorage)
-	ms.log = l
-	ms.store = map[key]*entity.Metric{}
-	ms.mx = &sync.RWMutex{}
-	ms.add = make(chan addRequest)
-	ms.state = stateInit
-
-	return ms
+	return &MetricStorage{
+		log:   l,
+		store: make(map[key]*entity.Metric),
+		mx:    &sync.RWMutex{},
+		add:   make(chan addRequest),
+		state: stateInit,
+	}
 }

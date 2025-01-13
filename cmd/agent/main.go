@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"syscall"
 	"time"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/konstantin-kukharev/metrics/internal/graceful"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
-	"github.com/konstantin-kukharev/metrics/internal/roundtripper"
 	"github.com/konstantin-kukharev/metrics/internal/storage/memory"
 )
 
@@ -36,18 +34,9 @@ func main() {
 
 	store := memory.NewMetric(l)
 
-	var rt http.RoundTripper
-	rt = http.DefaultTransport
-	rt = roundtripper.NewRetry(rt, roundtripper.DefaultRetryDurations...)
-	rt = roundtripper.NewCompress(rt)
-	rt = roundtripper.NewLogging(rt, l)
-	cli := &http.Client{
-		Transport: rt,
-		Timeout:   10 * time.Second,
-	}
-	reporter := application.NewReporter(l, cli, store,
-		fmt.Sprintf("http://%s/updates/", conf.GetServerAddress()), conf.GetReportInterval())
-	agent := application.NewAgent(store, conf, l)
+	reporter := application.NewReporter(l, store,
+		fmt.Sprintf("http://%s/updates/", conf.Address), time.Duration(conf.ReportInterval*int(time.Second)))
+	agent := application.NewAgent(store, time.Duration(conf.PoolInterval*int(time.Second)), l)
 
 	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
 	gs.AddTask(store)

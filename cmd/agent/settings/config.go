@@ -4,7 +4,6 @@ import (
 	"flag"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/konstantin-kukharev/metrics/internal"
 )
@@ -13,18 +12,6 @@ type Config struct {
 	Address        string
 	PoolInterval   int
 	ReportInterval int
-}
-
-func (c *Config) GetServerAddress() string {
-	return c.Address
-}
-
-func (c *Config) GetPoolInterval() time.Duration {
-	return time.Duration(c.PoolInterval * int(time.Second))
-}
-
-func (c *Config) GetReportInterval() time.Duration {
-	return time.Duration(c.ReportInterval * int(time.Second))
 }
 
 // Если указана переменная окружения, то используется она.
