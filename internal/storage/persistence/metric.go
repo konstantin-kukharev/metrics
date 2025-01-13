@@ -73,48 +73,32 @@ func (ms *MetricStorage) Set(ctx context.Context, es ...*entity.Metric) ([]*enti
 			return err
 		}
 
-		sqlInsert, err := tx.PrepareContext(ctx, `insert into metrics values ($1, $2 ,$3, $4) on conflict (id, mtype) `+
-			`do update set value = EXCLUDED.value, delta = metrics.delta + EXCLUDED.delta`)
+		sqlInsert, err := tx.PrepareContext(ctx, `insert into metrics values ($1, $2 ,$3, $4) `+
+			`on conflict (id, mtype) do update set value = EXCLUDED.value, delta = metrics.delta + EXCLUDED.delta `+
+			`returning id, mtype, delta, value`)
 		if err != nil {
 			return err
 		}
 		defer sqlInsert.Close()
-
-		keysForSelect := make(map[string]string)
+		keysForSelect := make(map[struct{ k, t string }]*entity.Metric)
 
 		for _, e := range es {
-			_, err := sqlInsert.ExecContext(
+			row := sqlInsert.QueryRowContext(
 				ctx,
 				e.ID, e.MType, e.Delta, e.Value)
-			if err != nil {
-				_ = tx.Rollback()
 
-				return err
-			}
-
-			keysForSelect[e.ID] = e.MType
-		}
-
-		results := make([]*entity.Metric, 0)
-
-		for n, t := range keysForSelect {
-			row := tx.QueryRowContext(ctx,
-				"select id, mtype, delta, value from metrics where id = $1 AND mtype = $2",
-				n, t)
 			ne := new(entity.Metric)
-			ne.ID = n
-			ne.MType = t
-			var d sql.NullInt64
-			var i sql.NullFloat64
-			err = row.Scan(&ne.ID, &ne.MType, &d, &i)
-			ne.SetValue(d, i)
+			err := row.Scan(&ne.ID, &ne.MType, &ne.Delta, &ne.Value)
 			if err != nil {
 				_ = tx.Rollback()
 
 				return err
 			}
 
-			results = append(results, ne)
+			keysForSelect[struct {
+				k string
+				t string
+			}{ne.ID, ne.MType}] = ne
 		}
 
 		err = tx.Commit()
@@ -122,6 +106,11 @@ func (ms *MetricStorage) Set(ctx context.Context, es ...*entity.Metric) ([]*enti
 			_ = tx.Rollback()
 
 			return err
+		}
+
+		results := make([]*entity.Metric, 0, len(keysForSelect))
+		for _, value := range keysForSelect {
+			results = append(results, value)
 		}
 
 		list <- results
@@ -146,10 +135,8 @@ func (ms *MetricStorage) Get(ctx context.Context, ems ...*entity.Metric) ([]*ent
 		}
 		defer sqlGet.Close()
 		for _, e := range ems {
-			var d sql.NullInt64
-			var i sql.NullFloat64
 			row := sqlGet.QueryRowContext(ctx, e.ID, e.MType)
-			err := row.Scan(&e.ID, &e.MType, &d, &i)
+			err := row.Scan(&e.ID, &e.MType, &e.Delta, &e.Value)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					return err
@@ -157,8 +144,6 @@ func (ms *MetricStorage) Get(ctx context.Context, ems ...*entity.Metric) ([]*ent
 
 				return fmt.Errorf("can`t get metric: %s", err.Error())
 			}
-
-			e.SetValue(d, i)
 		}
 
 		return nil
@@ -184,16 +169,12 @@ func (ms *MetricStorage) List(ctx context.Context) []*entity.Metric {
 
 			vals := make([]*entity.Metric, 0)
 			for rows.Next() {
-				var d sql.NullInt64
-				var i sql.NullFloat64
 				e := new(entity.Metric)
-				err = rows.Scan(&e.ID, &e.MType, &d, &i)
+				err = rows.Scan(&e.ID, &e.MType, &e.Delta, &e.Value)
 				if err != nil {
 					close(list)
 					return nil
 				}
-
-				e.SetValue(d, i)
 				vals = append(vals, e)
 			}
 
@@ -264,6 +245,7 @@ func (ms *MetricStorage) recoverConnection(ctx context.Context, wait ...time.Dur
 	}
 }
 
+// TODO: [change to goose migrations](https://github.com/pressly/goose)
 func (ms *MetricStorage) initialize() error {
 	req := `
 		DO ' BEGIN

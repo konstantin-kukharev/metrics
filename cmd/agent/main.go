@@ -15,8 +15,8 @@ import (
 
 	"github.com/konstantin-kukharev/metrics/internal/graceful"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
-	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
 	"github.com/konstantin-kukharev/metrics/internal/roundtripper"
+	"github.com/konstantin-kukharev/metrics/internal/storage/memory"
 )
 
 func main() {

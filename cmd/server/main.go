@@ -14,10 +14,10 @@ import (
 	"github.com/konstantin-kukharev/metrics/internal/handler"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
 	"github.com/konstantin-kukharev/metrics/internal/middleware"
-	"github.com/konstantin-kukharev/metrics/internal/repository"
-	"github.com/konstantin-kukharev/metrics/internal/repository/file"
-	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
-	"github.com/konstantin-kukharev/metrics/internal/repository/persistence"
+	"github.com/konstantin-kukharev/metrics/internal/storage"
+	"github.com/konstantin-kukharev/metrics/internal/storage/file"
+	"github.com/konstantin-kukharev/metrics/internal/storage/memory"
+	"github.com/konstantin-kukharev/metrics/internal/storage/persistence"
 	"go.uber.org/zap"
 )
 
@@ -38,37 +38,37 @@ func main() {
 
 	l.InfoCtx(ctx, "server running with options", zap.Any("config", conf))
 
-	var storage repository.Metric
-	storage = memory.NewMetric(l)
+	var s storage.Metric
+	s = memory.NewMetric(l)
 	if conf.GetDatabaseDNS() != "" {
-		storage = persistence.NewMetric(l, conf.GetDatabaseDNS())
+		s = persistence.NewMetric(l, conf.GetDatabaseDNS())
 	} else if conf.FileStoragePath != "" {
-		storage = file.NewMetric(l, conf)
+		s = file.NewMetric(l, conf)
 	}
 
 	router := chi.NewRouter()
-	router.Method("POST", "/update/{type}/{name}/{val}", middleware.WithLogging(handler.NewAddMetric(storage), l))
-	router.Method("GET", "/value/{type}/{name}", middleware.WithLogging(handler.NewGetMetric(storage), l))
-	router.Method("GET", "/", middleware.WithCompressing(middleware.WithLogging(handler.NewIndexMetric(storage), l)))
+	router.Method("POST", "/update/{type}/{name}/{val}", middleware.WithLogging(handler.NewAddMetric(s), l))
+	router.Method("GET", "/value/{type}/{name}", middleware.WithLogging(handler.NewGetMetric(s), l))
+	router.Method("GET", "/", middleware.WithCompressing(middleware.WithLogging(handler.NewIndexMetric(s), l)))
 
 	router.Method("POST", "/update/", middleware.WithJSONContent(
 		middleware.WithCompressing(
 			middleware.WithLogging(
-				handler.NewAddMetricV2(storage), l))))
+				handler.NewAddMetricV2(s), l))))
 	router.Method("POST", "/updates/", middleware.WithJSONContent(
 		middleware.WithCompressing(
 			middleware.WithLogging(
-				handler.NewAddMetricV3(storage), l))))
+				handler.NewAddMetricV3(s), l))))
 	router.Method("POST", "/value/", middleware.WithJSONContent(
 		middleware.WithCompressing(
 			middleware.WithLogging(
-				handler.NewMetricGetV2(storage), l))))
+				handler.NewMetricGetV2(s), l))))
 
 	router.Method("GET", "/ping", middleware.WithLogging(handler.NewPing(conf.GetDatabaseDNS(), l), l))
 	server := application.NewServer(l, router, conf)
 
 	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
-	gs.AddTask(storage)
+	gs.AddTask(s)
 	gs.AddTask(server)
 	err = gs.Wait(syscall.SIGTERM, syscall.SIGINT)
 
