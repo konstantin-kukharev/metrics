@@ -8,6 +8,7 @@ import (
 
 	"database/sql"
 
+	"github.com/pressly/goose/v3"
 	"go.uber.org/zap"
 
 	"github.com/jackc/pgconn"
@@ -247,25 +248,15 @@ func (ms *MetricStorage) recoverConnection(ctx context.Context, wait ...time.Dur
 
 // TODO: [change to goose migrations](https://github.com/pressly/goose)
 func (ms *MetricStorage) initialize() error {
-	req := `
-		DO ' BEGIN
-    		IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = ''mtype'') THEN
-				CREATE TYPE mtype AS ENUM (''gauge'',''counter'');
-			END IF;
-		END '; 
+	if err := goose.SetDialect("postgres"); err != nil {
+		return err
+	}
 
-		CREATE TABLE IF NOT EXISTS metrics (
-			id VARCHAR NOT NULL,
-			mtype mtype NOT NULL,
-			delta BIGINT,
-			value DOUBLE PRECISION
-		);
+	if err := goose.Up(ms.store, migrationsDir); err != nil {
+		return err
+	}
 
-		CREATE unique INDEX IF NOT EXISTS metrics_mname_idx ON metrics (id, mtype);`
-
-	_, err := ms.store.Exec(req)
-
-	return err
+	return nil
 }
 
 func (ms *MetricStorage) Run(ctx context.Context) error {

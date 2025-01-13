@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"database/sql"
 	"testing"
 
 	"github.com/konstantin-kukharev/metrics/domain"
@@ -103,56 +102,6 @@ func TestNewMetric(t *testing.T) {
 			assert.Equal(t, tt.summ, m.GetValue())
 			err = m.Validate()
 			assert.Equal(t, tt.validErr, err)
-		})
-	}
-}
-
-func TestAddValue(t *testing.T) {
-	type increment struct {
-		d sql.NullInt64
-		f sql.NullFloat64
-	}
-
-	var d1 int64 = 123
-	v1 := 1.23
-	var _ int64 = 123
-	tests := []struct {
-		name   string
-		value  *Metric
-		expect *Metric
-		inc    increment
-		err    error
-	}{
-		{
-			name:   "add gauge",
-			value:  &Metric{ID: "gauge1", MType: domain.MetricGauge, MValue: MValue{Value: nil, Delta: nil}},
-			expect: &Metric{ID: "gauge1", MType: domain.MetricGauge, MValue: MValue{Value: &v1, Delta: nil}},
-			inc:    increment{d: sql.NullInt64{Valid: false, Int64: 0}, f: sql.NullFloat64{Valid: true, Float64: 1.23}},
-		},
-		{
-			name:   "add gauge nil",
-			value:  &Metric{ID: "gauge1", MType: domain.MetricGauge, MValue: MValue{Value: nil, Delta: nil}},
-			expect: &Metric{ID: "gauge1", MType: domain.MetricGauge, MValue: MValue{Value: nil, Delta: nil}},
-			inc:    increment{d: sql.NullInt64{Valid: false, Int64: 0}, f: sql.NullFloat64{Valid: false, Float64: 0}},
-		},
-		{
-			name:   "add counter",
-			value:  &Metric{ID: "delta1", MType: domain.MetricCounter, MValue: MValue{Value: nil, Delta: nil}},
-			expect: &Metric{ID: "delta1", MType: domain.MetricCounter, MValue: MValue{Value: nil, Delta: &d1}},
-			inc:    increment{d: sql.NullInt64{Valid: true, Int64: 123}, f: sql.NullFloat64{Valid: false, Float64: 0}},
-		},
-		{
-			name:   "add counter nil",
-			value:  &Metric{ID: "delta1", MType: domain.MetricCounter, MValue: MValue{Value: nil, Delta: nil}},
-			expect: &Metric{ID: "delta1", MType: domain.MetricCounter, MValue: MValue{Value: nil, Delta: nil}},
-			inc:    increment{d: sql.NullInt64{Valid: false, Int64: 0}, f: sql.NullFloat64{Valid: false, Float64: 0}},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.value.SetValue(tt.inc.d, tt.inc.f)
-			assert.Equal(t, tt.expect, tt.value)
 		})
 	}
 }

@@ -37,6 +37,7 @@ services:
     volumes:
       - metrics:/tmp
       - ./../site/:/site
+      - ./../migrations/:/migrations
     links:
       - postgres
     depends_on:

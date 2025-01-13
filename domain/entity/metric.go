@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"database/sql"
 	"strconv"
 
 	"github.com/konstantin-kukharev/metrics/domain"
@@ -17,23 +16,6 @@ type Metric struct {
 type MValue struct {
 	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-}
-
-func (m *Metric) SetValue(d sql.NullInt64, v sql.NullFloat64) {
-	switch m.MType {
-	case domain.MetricGauge:
-		if !v.Valid {
-			m.Value = nil
-		} else {
-			m.Value = &v.Float64
-		}
-	case domain.MetricCounter:
-		if !d.Valid {
-			m.Delta = nil
-		} else {
-			m.Delta = &d.Int64
-		}
-	}
 }
 
 func (m *Metric) Aggregate(m2 *Metric) {
