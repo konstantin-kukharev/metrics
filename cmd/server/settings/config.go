@@ -4,7 +4,6 @@ import (
 	"flag"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/konstantin-kukharev/metrics/internal"
 )
@@ -14,22 +13,7 @@ type Config struct {
 	StoreInterval   int    // интервал времени в секундах, по истечении которого текущие показания сервера сохраняются на диск
 	FileStoragePath string // путь до файла, куда сохраняются текущие значения
 	Restore         bool   // загружать или нет ранее сохранённые значения из указанного файла при старте
-}
-
-func (c *Config) GetAddress() string {
-	return c.Address
-}
-
-func (c *Config) GetStoreInterval() time.Duration {
-	return time.Duration(c.StoreInterval * int(time.Second))
-}
-
-func (c *Config) GetFileStoragePath() string {
-	return c.FileStoragePath
-}
-
-func (c *Config) GetRestore() bool {
-	return c.Restore
+	DatabaseDNS     string // адрес базы данных, если не указана, то используется по умолчанию
 }
 
 func NewConfig() *Config {
@@ -43,17 +27,16 @@ func NewConfig() *Config {
 	return c
 }
 
-func (c *Config) WithFlag() *Config {
+func (c *Config) WithFlag() {
 	flag.StringVar(&c.Address, "a", internal.DefaultServerAddr, "server address")
 	flag.IntVar(&c.StoreInterval, "i", internal.DefaultServerStoreInterval, "interval to store data on FS")
 	flag.StringVar(&c.FileStoragePath, "f", internal.DefaultFileStoragePath, "file path to store data")
-	flag.BoolVar(&c.Restore, "r", internal.DefaultRestore, "file path to store data")
+	flag.BoolVar(&c.Restore, "r", internal.DefaultRestore, "is restore file data")
+	flag.StringVar(&c.DatabaseDNS, "d", "", "database dns path")
 	flag.Parse()
-
-	return c
 }
 
-func (c *Config) WithEnv() *Config {
+func (c *Config) WithEnv() {
 	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
 		c.Address = envRunAddr
 	}
@@ -70,6 +53,7 @@ func (c *Config) WithEnv() *Config {
 			c.Restore = val
 		}
 	}
-
-	return c
+	if envDB := os.Getenv("DATABASE_DSN"); envDB != "" {
+		c.DatabaseDNS = envDB
+	}
 }

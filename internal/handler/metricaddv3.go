@@ -9,20 +9,20 @@ import (
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 )
 
-type MetricGetV2 struct {
-	service metricReader
+type MetricAddV3 struct {
+	service metricWriter
 }
 
-func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *MetricAddV3) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp := make(map[string]string)
 
 	w.Header().Add("Content-Type", "application/json")
-	data := &entity.Metric{}
+	data := make([]*entity.Metric, 0)
 	var unmarshalErr *json.UnmarshalTypeError
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	err := decoder.Decode(data)
+	err := decoder.Decode(&data)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		if errors.As(err, &unmarshalErr) {
@@ -36,7 +36,12 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = data.Validate(); err != nil && !errors.Is(err, domain.ErrEmptyMetricValue) {
+	for _, m := range data {
+		err = m.Validate()
+		if err == nil {
+			continue
+		}
+
 		switch {
 		case errors.Is(err, domain.ErrWrongMetricName):
 			w.WriteHeader(http.StatusNotFound)
@@ -51,41 +56,24 @@ func (s *MetricGetV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, ok := s.service.Get(r.Context(), data)
-	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if len(m) != 1 {
+	res, err := s.service.Set(r.Context(), data...)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	result := &entity.Metric{
-		ID:    m[0].ID,
-		MType: m[0].MType,
-	}
-
-	if m[0].Delta != nil {
-		result.Delta = m[0].Delta
-	}
-	if m[0].Value != nil {
-		result.Value = m[0].Value
-	}
-
-	resultJSON, err := json.Marshal(result)
+	resultJSON, err := json.Marshal(res)
 	if err != nil {
 		resp["message"] = "Bad Request. " + err.Error()
 		jsonResp, _ := json.Marshal(resp)
 		_, _ = w.Write(jsonResp)
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(resultJSON)
 }
 
-func NewMetricGetV2(srv metricReader) *MetricGetV2 {
-	serv := &MetricGetV2{service: srv}
+func NewAddMetricV3(srv metricWriter) *MetricAddV3 {
+	serv := &MetricAddV3{service: srv}
 	return serv
 }

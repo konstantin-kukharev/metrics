@@ -1,98 +1,59 @@
 package middleware
 
 import (
-	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/konstantin-kukharev/metrics/internal/logger"
+	"go.uber.org/zap"
 )
 
-type logger interface {
-	Info(msg string, fields ...any)
-	Debug(msg string, fields ...any)
-	Warn(msg string, fields ...any)
-	Error(msg string, fields ...any)
+func WithJSONContent(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		headerContentType := r.Header.Get("Content-Type")
+		if headerContentType != "application/json" {
+			resp := make(map[string]string)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnsupportedMediaType)
+			resp["message"] = "Content Type is not application/json"
+			jsonResp, _ := json.Marshal(resp)
+			_, _ = w.Write(jsonResp)
+			return
+		}
+
+		h.ServeHTTP(w, r)
+	})
 }
 
-type LoggingRoundTripper struct {
-	next http.RoundTripper
-	log  logger
-}
-
-type CompressRoundTripper struct {
-	next http.RoundTripper
-}
-
-func NewLoggingRoundTripper(next http.RoundTripper, l logger) *LoggingRoundTripper {
-	return &LoggingRoundTripper{
-		next: next,
-		log:  l,
-	}
-}
-
-func (rt *LoggingRoundTripper) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	defer func(begin time.Time) {
-		rt.log.Info("Request",
-			"method", req.Method,
-			"host", req.URL.Scheme+"://"+req.URL.Host+req.URL.Path,
-			"err", err,
-			"took", time.Since(begin),
-		)
-	}(time.Now())
-
-	return rt.next.RoundTrip(req)
-}
-
-func NewCompressRoundTripper(next http.RoundTripper) *CompressRoundTripper {
-	return &CompressRoundTripper{
-		next: next,
-	}
-}
-
-func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	var buf bytes.Buffer
-	g := gzip.NewWriter(&buf)
-	b, err := io.ReadAll(req.Body)
-	defer req.Body.Close()
-
-	if err != nil {
-		return
-	}
-	if _, err = g.Write(b); err != nil {
-		return
-	}
-	if err = g.Close(); err != nil {
-		return
-	}
-
-	url := req.URL.Scheme + "://" + req.URL.Host + req.URL.Path
-	r, err := http.NewRequestWithContext(req.Context(), req.Method, url, &buf)
-	if err != nil {
-		return nil, err
-	}
-
-	r.Header.Set("Content-Encoding", "gzip")
-	r.Header.Set("Accept-Encoding", "gzip")
-	r.Header.Set("Content-Type", req.Header.Get("Content-Type"))
-
-	return rt.next.RoundTrip(r)
-}
-
-func WithLogging(h http.Handler, l logger) http.Handler {
+func WithLogging(h http.Handler, l *logger.Logger) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		uri := r.RequestURI
 		method := r.Method
 
+		b, err := io.ReadAll(r.Body)
+		defer r.Body.Close()
+		if err != nil {
+			l.ErrorCtx(r.Context(), "error reading body", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		r.Body = io.NopCloser(strings.NewReader(string(b)))
+
 		h.ServeHTTP(w, r)
 
 		duration := time.Since(start)
-		l.Info("new request",
-			"uri", uri,
-			"method", method,
-			"duration", duration,
+
+		l.InfoCtx(r.Context(), "new request",
+			zap.String("uri", uri),
+			zap.String("method", method),
+			zap.Duration("duration", duration),
+			zap.ByteString("body", b),
 		)
 	}
 

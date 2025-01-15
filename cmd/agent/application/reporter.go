@@ -7,54 +7,75 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/konstantin-kukharev/metrics/domain/entity"
+	"github.com/konstantin-kukharev/metrics/internal/logger"
+	"github.com/konstantin-kukharev/metrics/internal/roundtripper"
+	"go.uber.org/zap"
 )
-
-type getter interface {
-	Do() []*entity.Metric
-}
 
 type Reporter struct {
 	cli *http.Client
 	url string
-	s   getter
+	s   storage
 	i   time.Duration
+	log *logger.Logger
 }
 
-func NewReporter(f *http.Client, s getter, url string, i time.Duration) *Reporter {
+func NewReporter(l *logger.Logger, s storage, url string, i time.Duration) *Reporter {
+	var rt http.RoundTripper
+	rt = http.DefaultTransport
+	rt = roundtripper.NewRetry(rt, roundtripper.DefaultRetryDurations...)
+	rt = roundtripper.NewCompress(rt)
+	rt = roundtripper.NewLogging(rt, l)
+	cli := &http.Client{
+		Transport: rt,
+		Timeout:   10 * time.Second,
+	}
+
 	return &Reporter{
-		cli: f,
+		cli: cli,
 		url: url,
 		s:   s,
 		i:   i,
+		log: l,
 	}
 }
 
-func (r *Reporter) report() {
-	for _, m := range r.s.Do() {
-		b, err := json.Marshal(m)
-		if err != nil {
-			continue
-		}
-
-		request, err := http.NewRequestWithContext(context.TODO(), http.MethodPost, r.url, bytes.NewBuffer(b))
-		if err != nil {
-			continue
-		}
-		request.Header.Add("Content-Type", "application/json")
-		resp, err := r.cli.Do(request)
-		if err != nil {
-			continue
-		}
-		resp.Body.Close()
+func (r *Reporter) report(ctx context.Context) {
+	b, err := json.Marshal(r.s.List(ctx))
+	if err != nil {
+		r.log.WarnCtx(ctx, "error while marshaling metric",
+			zap.String("message", err.Error()),
+		)
+		return
 	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, r.url, bytes.NewBuffer(b))
+	if err != nil {
+		r.log.WarnCtx(ctx, "error while creating request",
+			zap.String("message", err.Error()),
+		)
+		return
+	}
+	request.Header.Add("Content-Type", "application/json")
+	resp, err := r.cli.Do(request)
+	if err != nil {
+		r.log.WarnCtx(ctx, "error while sending report",
+			zap.String("message", err.Error()),
+		)
+
+		return
+	}
+	resp.Body.Close()
 }
 
 func (r *Reporter) Run(ctx context.Context) error {
+	r.log.InfoCtx(ctx, "agent reporter is running")
 	for {
 		select {
 		case <-time.After(r.i):
-			r.report()
+			r.log.InfoCtx(ctx, "new report")
+			c := context.WithoutCancel(ctx)
+			r.report(c)
 		case <-ctx.Done():
 
 			return nil

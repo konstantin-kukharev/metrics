@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -8,13 +9,12 @@ import (
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 )
 
-type MetricWriter interface {
-	// Do set metric value
-	Do(...*entity.Metric) error
+type metricWriter interface {
+	Set(context.Context, ...*entity.Metric) ([]*entity.Metric, error)
 }
 
 type MetricAdd struct {
-	service MetricWriter
+	service metricWriter
 }
 
 func (s *MetricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +51,7 @@ func (s *MetricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.service.Do(data); err != nil {
+	if _, err := s.service.Set(r.Context(), data); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 
 		return
@@ -60,7 +60,7 @@ func (s *MetricAdd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func NewAddMetric(srv MetricWriter) *MetricAdd {
+func NewAddMetric(srv metricWriter) *MetricAdd {
 	serv := &MetricAdd{service: srv}
 	return serv
 }

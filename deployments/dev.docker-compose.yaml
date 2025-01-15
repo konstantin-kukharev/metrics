@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16.6-alpine
+    env_file: "./.env"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - metrics:/var/lib/postgresql/data
+    ports:
+      - "${LOCAL_PORT_POSTGRES}:${POSTGRES_PORT}"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 40Mb
+  app_server:
+    container_name: app-server
+    env_file: "./.env"
+    build:
+      context: ../
+      dockerfile: deployments/dev.Dockerfile
+      target: dev-runner
+      args:
+        APPLICATION_NAME: server
+    command: "-a=app_server:${SERVER_PORT} -f=${SERVER_FILE} -i=${SERVER_FILE_STORE_INTERVAL} -r=${SERVER_FILE_RESTORE} -d=${SERVER_DB_DNS}"
+    ports:
+      - "${LOCAL_PORT_SERVER}:${SERVER_PORT}"
+    volumes:
+      - metrics:/tmp
+      - ./../site/:/site
+      - ./../migrations/:/migrations
+    deploy:
+      resources:
+        limits:
+          cpus: '0.02'
+          memory: 25Mb
+    links:
+      - postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+  app_agent:
+    container_name: app-agent
+    env_file: "./.env"
+    build:
+      context: ../
+      dockerfile: deployments/dev.Dockerfile
+      target: dev-runner
+      args:
+        APPLICATION_NAME: agent
+    command: "-a=app_server:${SERVER_PORT}"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.02'
+          memory: 15Mb
+    links:
+      - app_server
+    depends_on:
+      - app_server
+volumes:
+  metrics:
+    name: metrics

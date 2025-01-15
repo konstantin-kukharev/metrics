@@ -2,48 +2,50 @@ package main
 
 import (
 	"context"
-	"net/http"
+	"fmt"
+	"log"
+	"os"
 	"syscall"
 	"time"
 
 	"github.com/konstantin-kukharev/metrics/cmd/agent/application"
 	"github.com/konstantin-kukharev/metrics/cmd/agent/settings"
+	"go.uber.org/zap"
 
 	"github.com/konstantin-kukharev/metrics/internal/graceful"
 	"github.com/konstantin-kukharev/metrics/internal/logger"
-	"github.com/konstantin-kukharev/metrics/internal/repository/memory"
-	"github.com/konstantin-kukharev/metrics/internal/roundtripper"
-
-	usecase "github.com/konstantin-kukharev/metrics/domain/usecase/metric"
+	"github.com/konstantin-kukharev/metrics/internal/storage/memory"
 )
 
 func main() {
 	conf := settings.New().WithFlag().WithEnv()
-	log := logger.NewSlog()
-	log.WithDebug()
-	ctx := context.WithoutCancel(context.Background())
-	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
 
-	store := memory.NewStorage(log)
-	add := usecase.NewAddMetric(store, nil)
-	get := usecase.NewListMetric(store)
-
-	var rt http.RoundTripper
-	rt = http.DefaultTransport
-	rt = roundtripper.NewLogging(rt, log)
-	rt = roundtripper.NewCompress(rt)
-	cli := &http.Client{
-		Transport: rt,
+	ctx := context.Background()
+	l, err := logger.NewLogger(zap.InfoLevel)
+	if err != nil {
+		log.Panic(err)
 	}
-	r := application.NewReporter(cli, get, "http://"+conf.GetServerAddress()+"/update/", conf.GetReportInterval())
-	gs.AddTask(r)
+	ctx = l.WithContextFields(ctx,
+		zap.Int("pid", os.Getpid()),
+		zap.String("app", "server"))
+	defer l.Sync()
 
-	agent := application.NewAgent(add, conf, log)
+	l.InfoCtx(ctx, "agent running with options", zap.Any("config", conf))
+
+	store := memory.NewMetric(l)
+
+	reporter := application.NewReporter(l, store,
+		fmt.Sprintf("http://%s/updates/", conf.Address), time.Duration(conf.ReportInterval*int(time.Second)))
+	agent := application.NewAgent(store, time.Duration(conf.PoolInterval*int(time.Second)), l)
+
+	gs := graceful.NewGracefulShutdown(ctx, 1*time.Second)
+	gs.AddTask(store)
 	gs.AddTask(agent)
+	gs.AddTask(reporter)
 
-	err := gs.Wait(syscall.SIGTERM, syscall.SIGINT)
+	err = gs.Wait(syscall.SIGTERM, syscall.SIGINT)
 
 	if err != nil {
-		log.Error("error occurred", "error", err)
+		l.ErrorCtx(ctx, "agent service finished", zap.Any("error", err))
 	}
 }

@@ -5,49 +5,41 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/konstantin-kukharev/metrics/domain"
 	"github.com/konstantin-kukharev/metrics/domain/entity"
 	"github.com/konstantin-kukharev/metrics/internal"
+	"github.com/konstantin-kukharev/metrics/internal/logger"
+	"go.uber.org/zap"
 )
 
-type config interface {
-	GetServerAddress() string
-	GetPoolInterval() time.Duration
-}
-
-type logger interface {
-	Info(msg string, fields ...any)
-	Debug(msg string, fields ...any)
-	Warn(msg string, fields ...any)
-	Error(msg string, fields ...any)
-}
-
-type updater interface {
-	Do(...*entity.Metric) error
+type storage interface {
+	Set(context.Context, ...*entity.Metric) ([]*entity.Metric, error)
+	List(context.Context) []*entity.Metric
 }
 
 type Agent struct {
-	log          logger
+	log          *logger.Logger
 	poolInterval time.Duration
 	counter      int64
-	updater      updater
+	updater      storage
 }
 
 func (a *Agent) Run(ctx context.Context) error {
+	a.log.InfoCtx(ctx, "agent is running")
 	for {
 		select {
 		case <-time.After(a.poolInterval):
-			a.log.Info("update pool")
+			a.log.InfoCtx(ctx, "update pool")
 			var mem runtime.MemStats
 			runtime.ReadMemStats(&mem)
-			err := a.updater.Do(a.update(&mem)...)
+			c := context.WithoutCancel(ctx)
+			_, err := a.updater.Set(c, a.update(&mem)...)
 			if err != nil {
-				a.log.Warn("error while update metrics",
-					"msg", err,
+				a.log.InfoCtx(ctx, "error while update metrics",
+					zap.String("message", err.Error()),
 				)
 			}
 		case <-ctx.Done():
-			a.log.Warn("agent stopped")
+			a.log.InfoCtx(ctx, "agent stopped")
 
 			return nil
 		}
@@ -89,7 +81,7 @@ func (a *Agent) update(mem *runtime.MemStats) []*entity.Metric {
 	} {
 		metric := &entity.Metric{
 			ID:    name,
-			MType: domain.MetricGauge,
+			MType: entity.MetricGauge,
 		}
 		metric.Value = &val
 		list = append(list, metric)
@@ -98,7 +90,7 @@ func (a *Agent) update(mem *runtime.MemStats) []*entity.Metric {
 	a.counter += 1
 	cnt := &entity.Metric{
 		ID:    "PollCount",
-		MType: domain.MetricCounter,
+		MType: entity.MetricCounter,
 	}
 	cnt.Delta = &a.counter
 
@@ -107,9 +99,9 @@ func (a *Agent) update(mem *runtime.MemStats) []*entity.Metric {
 	return list
 }
 
-func NewAgent(updater updater, app config, l logger) *Agent {
+func NewAgent(updater storage, poolInterval time.Duration, l *logger.Logger) *Agent {
 	agent := new(Agent)
-	agent.poolInterval = app.GetPoolInterval()
+	agent.poolInterval = poolInterval
 	agent.counter = 0
 	agent.updater = updater
 	agent.log = l
